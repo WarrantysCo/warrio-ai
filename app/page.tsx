@@ -1,0 +1,882 @@
+"use client";
+
+import { useRef, useState } from "react";
+
+import { warrantyProducts } from "./data/products";
+
+const televisionProduct = warrantyProducts.find(
+  (product) => product.id === "television"
+)!;
+const televisionPlans = televisionProduct.plans;
+
+type JourneyStep =
+  | "chat"
+  | "recommendation"
+  | "options"
+  | "eligibility"
+  | "details"
+  | "summary"
+  | "success";
+
+type InvoiceAnalysis = {
+  summary: {
+    seller: string | null;
+    invoiceNumber: string | null;
+    invoiceDateText: string | null;
+    invoiceDateNormalized: string | null;
+    product: string | null;
+    matchedProductCategory: string | null;
+    brand: string | null;
+    model: string | null;
+    serialNumber: string | null;
+    invoiceValue: string | null;
+    currency: string | null;
+    purchaseLocationCountry: string | null;
+    missingDetails: string[];
+  };
+  eligibilityStatus: "eligible" | "ineligible" | "cannot_confirm";
+  eligibilityMessage: string;
+  recommendedPlanId: string | null;
+  availablePlanIds: string[];
+};
+
+type CustomerDetails = {
+  fullName: string;
+  mobile: string;
+  email: string;
+  brand: string;
+  model: string;
+  serialNumber: string;
+  purchaseDate: string;
+  consent: boolean;
+};
+
+const emptyCustomerDetails: CustomerDetails = {
+  fullName: "",
+  mobile: "",
+  email: "",
+  brand: "",
+  model: "",
+  serialNumber: "",
+  purchaseDate: "",
+  consent: false,
+};
+
+const products = [
+  ...warrantyProducts.map((product) => ({
+    name: product.category,
+    icon: product.category === "Television" ? "📺" : "🛡️",
+    price:
+      product.plans.length > 0
+        ? `From ₹${Math.min(
+            ...product.plans.map((plan) => plan.price)
+          ).toLocaleString("en-IN")}`
+        : "Ask Warrio",
+  })),
+  {
+    name: "Other Product",
+    icon: "🛡️",
+    price: "Ask Warrio",
+  },
+];
+
+const quickQuestions = [
+  "📎 Upload Invoice to Get Best Plan Options",
+  "🔍 Check What's Covered",
+  "🔧 I Need Help With a Breakdown",
+  "📋 Understand My Warranty",
+  "💬 Ask Warrio Something Else",
+];
+
+export default function Home() {
+  const [question, setQuestion] = useState("");
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [isAnalyzingInvoice, setIsAnalyzingInvoice] = useState(false);
+  const [invoiceAnalysis, setInvoiceAnalysis] =
+    useState<InvoiceAnalysis | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [journeyStep, setJourneyStep] = useState<JourneyStep>("chat");
+  const [customerDetails, setCustomerDetails] =
+    useState<CustomerDetails>(emptyCustomerDetails);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [leadReference, setLeadReference] = useState("");
+  const [leadError, setLeadError] = useState("");
+  const invoiceAnalysisRequestIdRef = useRef(0);
+
+  const selectedPlan = televisionPlans.find(
+    (plan) => plan.id === selectedPlanId
+  );
+
+  const updateCustomerDetail = <K extends keyof CustomerDetails>(
+    field: K,
+    value: CustomerDetails[K]
+  ) => {
+    setCustomerDetails((current) => ({ ...current, [field]: value }));
+    setFormErrors([]);
+    setLeadError("");
+  };
+
+  const validateCustomerDetails = () => {
+    const errors: string[] = [];
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const mobilePattern = /^[6-9]\d{9}$/;
+
+    if (!selectedPlan) errors.push("Please select one Television plan.");
+    if (!customerDetails.fullName.trim()) {
+      errors.push("Please enter your full name.");
+    }
+    if (!mobilePattern.test(customerDetails.mobile.trim())) {
+      errors.push("Please enter a valid 10-digit mobile number.");
+    }
+    if (!emailPattern.test(customerDetails.email.trim())) {
+      errors.push("Please enter a valid email address.");
+    }
+    if (!customerDetails.brand.trim()) {
+      errors.push("Please enter the Television brand.");
+    }
+    if (!customerDetails.model.trim()) {
+      errors.push("Please enter the Television model.");
+    }
+    if (!customerDetails.serialNumber.trim()) {
+      errors.push("Please enter the product serial number.");
+    }
+    if (!customerDetails.purchaseDate) {
+      errors.push("Please enter the purchase date.");
+    }
+    if (!customerDetails.consent) {
+      errors.push("Please confirm that you want to proceed with this plan.");
+    }
+
+    return errors;
+  };
+
+  const continueToDetails = () => {
+    if (!selectedPlan || invoiceAnalysis?.eligibilityStatus !== "eligible") {
+      setFormErrors(["Please select one Television plan."]);
+      return;
+    }
+
+    setJourneyStep("details");
+    setFormErrors([]);
+  };
+
+  const reviewOrder = () => {
+    const errors = validateCustomerDetails();
+    setFormErrors(errors);
+
+    if (errors.length === 0) setJourneyStep("summary");
+  };
+
+  const submitLead = async () => {
+    const errors = validateCustomerDetails();
+    setFormErrors(errors);
+
+    if (errors.length > 0 || !selectedPlan) return;
+
+    setIsSubmittingLead(true);
+    setLeadError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("fullName", customerDetails.fullName.trim());
+      formData.append("mobile", customerDetails.mobile.trim());
+      formData.append("email", customerDetails.email.trim());
+      formData.append("product", "Television");
+      formData.append("brand", customerDetails.brand.trim());
+      formData.append("model", customerDetails.model.trim());
+      formData.append("serialNumber", customerDetails.serialNumber.trim());
+      formData.append("purchaseDate", customerDetails.purchaseDate);
+      formData.append("selectedPlanId", selectedPlan.id);
+      formData.append(
+        "eligibilityStatus",
+        invoiceAnalysis?.eligibilityStatus || ""
+      );
+      formData.append("consent", String(customerDetails.consent));
+
+      if (invoiceFile) formData.append("invoice", invoiceFile, invoiceFile.name);
+
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result?.success) {
+        setLeadError(result?.message || "We could not create your request.");
+        return;
+      }
+
+      setLeadReference(result.leadReference);
+      setJourneyStep("success");
+    } catch {
+      setLeadError("We could not create your request. Please try again.");
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
+  const openWarrio = (message = "") => {
+    setQuestion(message);
+    setChatOpen(true);
+  };
+
+  const submitQuestion = async () => {
+    const trimmedQuestion = question.trim();
+    const hasInvoice = Boolean(invoiceFile);
+    let requestId = 0;
+
+    if (!trimmedQuestion && !hasInvoice) {
+      return;
+    }
+
+    if (hasInvoice && isAnalyzingInvoice) {
+      return;
+    }
+
+    try {
+      let response: Response;
+      requestId = hasInvoice
+        ? ++invoiceAnalysisRequestIdRef.current
+        : invoiceAnalysisRequestIdRef.current;
+
+      if (hasInvoice && invoiceFile) {
+        setIsAnalyzingInvoice(true);
+        setAnswer("");
+
+        const formData = new FormData();
+        formData.append(
+          "message",
+          trimmedQuestion ||
+            "Please analyze this invoice and recommend the available warranty options."
+        );
+        formData.append("invoice", invoiceFile, invoiceFile.name);
+
+        if (selectedProduct) {
+          formData.append("selectedProduct", selectedProduct);
+        }
+
+        response = await fetch("/api/warrio", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        response = await fetch("/api/warrio", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: trimmedQuestion,
+          }),
+        });
+      }
+
+      const result = await response.json();
+
+      if (hasInvoice && requestId !== invoiceAnalysisRequestIdRef.current) {
+        return;
+      }
+
+      if (!response.ok || !result?.success) {
+        if (hasInvoice) {
+          setAnswer(
+            result?.message ||
+              "Warrio couldn't review that invoice right now. Please try again."
+          );
+        } else {
+          setAnswer(
+            result?.message ||
+              "Warrio is temporarily unavailable. Please try again."
+          );
+        }
+        return;
+      }
+
+      setQuestion("");
+      setAnswer(result.message);
+
+      if (result.analysis) {
+        const analysis = result.analysis as InvoiceAnalysis;
+        const summary = analysis.summary;
+
+        setInvoiceAnalysis(analysis);
+        setSelectedProduct(summary.matchedProductCategory || "");
+        setSelectedPlanId(analysis.recommendedPlanId || "");
+        setCustomerDetails((current) => ({
+          ...current,
+          brand: summary.brand || current.brand,
+          model: summary.model || current.model,
+          serialNumber: summary.serialNumber || current.serialNumber,
+          purchaseDate:
+            summary.invoiceDateNormalized || current.purchaseDate,
+        }));
+        setJourneyStep(
+          analysis.eligibilityStatus === "eligible"
+            ? "recommendation"
+            : "eligibility"
+        );
+      }
+    } catch {
+      if (hasInvoice) {
+        setAnswer("Warrio couldn't review that invoice right now. Please try again.");
+      } else {
+        setAnswer("Warrio is temporarily unavailable. Please try again.");
+      }
+    } finally {
+      if (hasInvoice && requestId === invoiceAnalysisRequestIdRef.current) {
+        setIsAnalyzingInvoice(false);
+      }
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-2xl shadow-lg shadow-blue-600/30">
+              🛡️
+            </div>
+            <div>
+              <div className="text-xl font-bold tracking-tight">Warrio AI</div>
+              <div className="text-xs text-slate-400">
+                Your Warranty Warrior
+              </div>
+            </div>
+          </div>
+
+          <nav className="hidden items-center gap-8 md:flex">
+            <a href="#protect" className="text-sm text-slate-300 hover:text-white">
+              Protect My Product
+            </a>
+            <a href="#how" className="text-sm text-slate-300 hover:text-white">
+              How It Works
+            </a>
+            <a href="#support" className="text-sm text-slate-300 hover:text-white">
+              Support
+            </a>
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => openWarrio()}
+            className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
+          >
+            Ask Warrio
+          </button>
+        </div>
+      </header>
+
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.28),transparent_45%)]" />
+
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+          <div>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-sm text-blue-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              AI-powered warranty assistance
+            </div>
+
+            <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
+              Protect what you own.
+              <span className="block text-blue-400">
+                Let Warrio handle the rest.
+              </span>
+            </h1>
+
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+              Get help understanding your warranty, protect eligible products,
+              register your purchase and get claim assistance - all from one
+              intelligent warranty platform.
+            </p>
+
+            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => openWarrio("I want to protect my product")}
+                className="rounded-2xl bg-blue-600 px-7 py-4 font-bold shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
+              >
+                🛡️ Protect My Product
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openWarrio()}
+                className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4 font-bold backdrop-blur transition hover:bg-white/10"
+              >
+                🤖 Ask Warrio
+              </button>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-400">
+              <span>✓ Warranty assistance</span>
+              <span>✓ Product registration</span>
+              <span>✓ Claim support</span>
+            </div>
+          </div>
+
+          <div className="mx-auto w-full max-w-lg">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-blue-950/40 backdrop-blur-xl">
+              <div className="flex items-center gap-4 border-b border-white/10 pb-5">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-3xl">
+                  🛡️
+                </div>
+
+                <div>
+                  <div className="font-bold">Warrio AI</div>
+                  <div className="flex items-center gap-2 text-sm text-emerald-400">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    Ready to help
+                  </div>
+                </div>
+              </div>
+
+              <div className="py-6">
+                <div className="max-w-sm rounded-2xl rounded-tl-sm bg-slate-800 p-4 text-sm leading-6 text-slate-200">
+                  Hi! I&apos;m Warrio. 👋
+                  <br />
+                  <br />
+                  Tell me what product you want to protect or what warranty
+                  question you have.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openWarrio()}
+                className="w-full rounded-2xl bg-blue-600 py-4 font-bold transition hover:bg-blue-500"
+              >
+                Start Conversation →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="protect" className="bg-slate-900/70 py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-10 max-w-2xl">
+            <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+              Protect your product
+            </div>
+            <h2 className="mt-3 text-3xl font-bold md:text-4xl">
+              What do you want to protect?
+            </h2>
+            <p className="mt-4 text-slate-400">
+              Choose a product and Warrio will guide you through the next step.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => (
+              <button
+                key={product.name}
+                onClick={() => {
+                  setSelectedProduct(product.name);
+                  setSelectedPlanId("");
+                  setJourneyStep("chat");
+                  setFormErrors([]);
+                  setLeadError("");
+                  openWarrio(`I want to protect my ${product.name}`);
+                }}
+                className="group rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-left transition hover:-translate-y-1 hover:border-blue-500/40 hover:bg-blue-500/[0.08]"
+              >
+                <div className="flex items-start justify-between">
+                  <span className="text-4xl">{product.icon}</span>
+                  <span className="text-sm text-slate-500 transition group-hover:text-blue-400">
+                    →
+                  </span>
+                </div>
+
+                <div className="mt-6 text-lg font-bold">{product.name}</div>
+                <div className="mt-2 text-sm text-slate-400">
+                  {product.price}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how" className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center">
+            <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+              Simple
+            </div>
+            <h2 className="mt-3 text-3xl font-bold md:text-4xl">
+              Warranty support without the headache
+            </h2>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                number: "01",
+                title: "Tell Warrio",
+                text: "Tell us what product you own or what problem you're facing.",
+              },
+              {
+                number: "02",
+                title: "Get guidance",
+                text: "Warrio helps you understand your available warranty options and next steps.",
+              },
+              {
+                number: "03",
+                title: "Take action",
+                text: "Register, protect, raise a claim or connect with support.",
+              },
+            ].map((step) => (
+              <div
+                key={step.number}
+                className="rounded-3xl border border-white/10 bg-white/[0.04] p-7"
+              >
+                <div className="text-sm font-bold text-blue-400">
+                  {step.number}
+                </div>
+                <h3 className="mt-5 text-xl font-bold">{step.title}</h3>
+                <p className="mt-3 leading-7 text-slate-400">{step.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="support" className="px-6 pb-20">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-blue-500/20 bg-blue-600/10 p-8 md:p-12">
+          <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
+            <div>
+              <h2 className="text-3xl font-bold">Not sure what you need?</h2>
+              <p className="mt-3 max-w-xl text-slate-400">
+                Ask Warrio. It&apos;s built to help you understand your
+                warranty options before you make a decision.
+              </p>
+            </div>
+
+              <button
+                type="button"
+                onClick={() => openWarrio("I need help choosing the right warranty")}
+                className="shrink-0 rounded-2xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
+              >
+                Talk to Warrio →
+              </button>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/10 py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+          <div>
+            © {new Date().getFullYear()} Warrantys.co · Deetya Warranty Pvt Ltd
+          </div>
+          <div>Powered by Warrio AI · Built by AA Labs</div>
+        </div>
+      </footer>
+
+      {chatOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm md:items-center">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-bold">🛡️ Warrio AI</div>
+                <div className="text-xs text-slate-500">Warranty assistant</div>
+              </div>
+
+              <button
+                onClick={() => setChatOpen(false)}
+                className="rounded-full bg-white/10 px-3 py-2 text-slate-300 hover:bg-white/15"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-slate-800 p-4 text-sm leading-6 text-slate-300">
+              {selectedProduct
+                ? `Great - let's look at protection options for your ${selectedProduct}.`
+                : "Tell me what you need help with and I'll guide you."}
+            </div>
+
+            {journeyStep === "success" ? (
+              <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-5 text-sm leading-6 text-emerald-100">
+                <div className="text-base font-bold">
+                  Your warranty request has been created successfully.
+                </div>
+                <div className="mt-3">Lead reference: {leadReference}</div>
+                <div>Selected plan: {selectedPlan?.tenure}</div>
+                <div>
+                  Price: ₹{selectedPlan?.price.toLocaleString("en-IN")}
+                </div>
+                <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-amber-100">
+                  Payment setup in progress
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <div className="text-sm font-semibold text-blue-300">
+                  {journeyStep === "chat"
+                    ? "Start with your purchase invoice"
+                    : journeyStep === "recommendation"
+                      ? "Warrio's recommendation"
+                      : journeyStep === "options"
+                        ? "Other verified options"
+                        : journeyStep === "eligibility"
+                          ? "Eligibility review"
+                    : journeyStep === "details"
+                      ? "Customer details"
+                      : "Review your request"}
+                </div>
+
+                {journeyStep === "chat" && !invoiceAnalysis && (
+                  <>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      Upload your purchase invoice and Warrio will check the product,
+                      purchase date and available protection options for you.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("invoice-upload")?.click()}
+                      className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500"
+                    >
+                      Upload purchase invoice
+                    </button>
+                  </>
+                )}
+
+                {invoiceAnalysis && journeyStep === "recommendation" && selectedPlan && (
+                  <>
+                    <div className="mt-3 rounded-xl bg-slate-950/60 p-4 text-sm leading-6 text-slate-200">
+                      <div>{answer}</div>
+                      <div className="mt-3 font-semibold text-blue-200">
+                        Recommended: {selectedPlan.tenure} Extended Warranty Plan · ₹
+                        {selectedPlan.price.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={continueToDetails}
+                      className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500"
+                    >
+                      Generate Secure Payment Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJourneyStep("options")}
+                      className="mt-2 w-full rounded-xl border border-white/10 py-3 text-sm text-slate-300 hover:bg-white/5"
+                    >
+                      View Other Plans
+                    </button>
+                  </>
+                )}
+
+                {invoiceAnalysis && journeyStep === "options" && (
+                  <>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      These are the other verified Television options. Coverage does not
+                      change unless the verified plan data says otherwise.
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {televisionPlans
+                        .filter((plan) => plan.id !== invoiceAnalysis.recommendedPlanId)
+                        .map((plan) => (
+                          <button
+                            type="button"
+                            key={plan.id}
+                            onClick={() => {
+                              setSelectedPlanId(plan.id);
+                              setJourneyStep("details");
+                            }}
+                            className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-3 py-3 text-left hover:bg-white/5"
+                          >
+                            <span>{plan.tenure} · shorter commitment / lower upfront option</span>
+                            <span className="font-semibold">₹{plan.price.toLocaleString("en-IN")}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </>
+                )}
+
+                {invoiceAnalysis && journeyStep === "eligibility" && (
+                  <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                    {invoiceAnalysis.eligibilityMessage}
+                    {invoiceAnalysis.eligibilityStatus === "cannot_confirm" && (
+                      <div className="mt-2">Please provide the missing invoice information so Warrio can review eligibility.</div>
+                    )}
+                  </div>
+                )}
+
+                {journeyStep === "details" && (
+                  <div className="mt-4 space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
+                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
+                      <input aria-label="Email" type="email" placeholder="Email" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500 sm:col-span-2" />
+                      <input aria-label="Brand" placeholder="Television brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
+                      <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
+                      <input aria-label="Serial number" placeholder="Serial number" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
+                      <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm text-slate-300 outline-none focus:border-blue-500" />
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-3 text-sm text-slate-300">
+                      <button type="button" onClick={() => document.getElementById("invoice-upload")?.click()} className="font-semibold text-blue-300 hover:text-blue-200">
+                        {invoiceFile ? "Replace invoice" : "Upload invoice"}
+                      </button>
+                      <span className="ml-2">{invoiceFile ? invoiceFile.name : "(optional for this V1)"}</span>
+                    </div>
+
+                    <label className="flex gap-3 text-sm leading-6 text-slate-300">
+                      <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
+                      <span>I want to proceed with the selected Television warranty plan.</span>
+                    </label>
+
+                    <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500">
+                      Review request
+                    </button>
+                  </div>
+                )}
+
+                {journeyStep === "summary" && selectedPlan && (
+                  <div className="mt-4 space-y-2 text-sm text-slate-300">
+                    <div className="rounded-xl bg-slate-950/60 p-4 leading-7">
+                      <div>Customer: {customerDetails.fullName}</div>
+                      <div>Product: Television</div>
+                      <div>Brand/model: {customerDetails.brand} / {customerDetails.model}</div>
+                      <div>Selected tenure: {selectedPlan.tenure}</div>
+                      <div>Price: ₹{selectedPlan.price.toLocaleString("en-IN")}</div>
+                      <div>Purchase date: {customerDetails.purchaseDate}</div>
+                      <div>Invoice: {invoiceFile ? invoiceFile.name : "Not uploaded"}</div>
+                      <div>Mobile/email: {customerDetails.mobile} / {customerDetails.email}</div>
+                    </div>
+                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-red-100">{leadError}</div>}
+                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
+                      {isSubmittingLead ? "Creating request..." : "Proceed to Purchase"}
+                    </button>
+                    <button type="button" onClick={() => setJourneyStep("details")} className="w-full rounded-xl border border-white/10 py-3 text-sm text-slate-300 hover:bg-white/5">
+                      Edit details
+                    </button>
+                  </div>
+                )}
+
+                {formErrors.length > 0 && (
+                  <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm leading-6 text-red-100">
+                    {formErrors.map((error) => <div key={error}>{error}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {journeyStep === "chat" && isAnalyzingInvoice ? (
+              <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm leading-6 text-blue-100">
+                Warrio is reviewing your invoice...
+              </div>
+            ) : journeyStep === "chat" && answer ? (
+              <div className="mt-4 max-h-56 overflow-y-auto rounded-2xl bg-slate-800 p-4 text-sm leading-6 text-slate-200 whitespace-pre-wrap select-text">
+                {answer}
+              </div>
+            ) : null}
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {quickQuestions.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => {
+                    if (item.includes("Upload Invoice")) {
+                      document.getElementById("invoice-upload")?.click();
+                      return;
+                    }
+
+                    if (item.includes("Check What's Covered")) {
+                      setQuestion(
+                        "Please explain what is covered under the available warranty plans."
+                      );
+                      return;
+                    }
+
+                    if (item.includes("Breakdown")) {
+                      setQuestion("I need help with a product breakdown.");
+                      return;
+                    }
+
+                    if (item.includes("Understand My Warranty")) {
+                      setQuestion(
+                        "Please explain my warranty and the important terms I should know."
+                      );
+                      return;
+                    }
+
+                    if (item.includes("Ask Warrio")) {
+                      setQuestion("");
+                      return;
+                    }
+
+                    setQuestion(item);
+                  }}
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-300 hover:bg-white/10"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                id="invoice-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setInvoiceFile(file);
+                }}
+              />
+
+              {invoiceFile && (
+                <div className="mb-2 w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                  📎 Invoice selected:{" "}
+                  <span className="font-semibold">{invoiceFile.name}</span>
+                  {isAnalyzingInvoice && (
+                    <div className="mt-1 text-xs text-blue-100/80">
+                      Reviewing this invoice now.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void submitQuestion();
+                  }
+                }}
+                placeholder="Ask Warrio anything..."
+                rows={1}
+                className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500"
+              />
+
+              <button
+                type="button"
+                onClick={submitQuestion}
+                disabled={isAnalyzingInvoice && Boolean(invoiceFile)}
+                className="rounded-2xl bg-blue-600 px-5 font-bold hover:bg-blue-500"
+              >
+                {isAnalyzingInvoice && invoiceFile ? "..." : "→"}
+              </button>
+            </div>
+
+            <p className="mt-4 text-center text-xs text-slate-600">
+              Warrio will use verified warranty information when connected to
+              the production system.
+            </p>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
