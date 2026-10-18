@@ -1,6 +1,20 @@
 // Builds one row for the "Warrio Leads" table.
 const plan = $('Pick Plan From Price List').first().json;
-const response = $input.first().json;
+const response = $('Ask Gemini: Write Reply').first().json;
+
+// The customer's own Razorpay link, when it was made. Any failure falls back to WhatsApp.
+let paymentLink = '';
+let paymentNote = '';
+if (plan.make_payment_link) {
+  const razorpay = $('Create Razorpay Payment Link').isExecuted ? $('Create Razorpay Payment Link').first().json : {};
+  if (typeof razorpay.short_url === 'string' && /^https:\/\//.test(razorpay.short_url)) {
+    paymentLink = razorpay.short_url;
+    paymentNote = `Payment link: ${paymentLink}`;
+  } else {
+    const why = razorpay.error ? (razorpay.error.description || razorpay.error.message || JSON.stringify(razorpay.error)) : 'no link returned';
+    paymentNote = 'Razorpay link could not be made (' + String(why).slice(0, 200) + '). Customer was shown the WhatsApp button.';
+  }
+}
 
 let reply = plan.fallback_reply;
 if (!plan.skip_ai_reply) {
@@ -35,7 +49,7 @@ return [{ json: {
   days_since_purchase: plan.days_since_purchase ?? 0,
   recommended_plan: plan.recommended_plan || '',
   plan_price_inr: plan.plan_price_inr || 0,
-  notes_for_team: plan.notes_for_team,
+  notes_for_team: [plan.notes_for_team, paymentNote].filter(Boolean).join(' '),
   warrio_reply: reply,
   status: plan.status,
   source: 'n8n_form',

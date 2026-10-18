@@ -2,7 +2,7 @@
 // price list and rules the website uses.
 //
 // Run from the repo root:
-//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.2-Gemini.json
+//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.3-Gemini.json
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,6 +13,10 @@ import { salesRules } from "@/app/data/salesRules";
 const SETTINGS_NODE = "Warrio Settings (edit here)";
 const FORM_NODE = "Enquiry Form";
 const TABLE_NODE = "Create Leads Table (first time only)";
+const PLAN_NODE = "Pick Plan From Price List";
+const PAY_CHECK_NODE = "Make Payment Link?";
+const RAZORPAY_NODE = "Create Razorpay Payment Link";
+const PREPARE_NODE = "Prepare Lead";
 
 // Code node scripts live in scripts/n8n/code so they can be read and edited as plain JavaScript.
 const code = (file: string) => readFileSync(join(__dirname, "code", file), "utf8");
@@ -75,9 +79,10 @@ const COUNTRY = "${salesRules.country}";
 const WHATSAPP_NUMBER = "918875192691";
 const PHONE_DISPLAY = "88751 92691";
 
-// Optional: paste a payment page link (for example a Razorpay payment page) between the quotes.
-// When it is empty, the plan buttons open WhatsApp with the plan details instead.
-const PAYMENT_LINK = "";
+// true: make a Razorpay payment link with the exact plan price for every customer
+// (needs the "Razorpay" key in the "Create Razorpay Payment Link" box).
+// false: the plan button opens WhatsApp instead.
+const USE_RAZORPAY = true;
 
 const COVERED = ${JSON.stringify(salesRules.coverage.join(", "))};
 
@@ -98,7 +103,7 @@ const PRICE_LIST = ${priceListCode()};
 
 // Carry the uploaded invoice forward from the form.
 return [{
-  json: { MODEL, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, PAYMENT_LINK, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
+  json: { MODEL, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, USE_RAZORPAY, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
   binary: $('${FORM_NODE}').first().binary,
 }];
 `;
@@ -111,7 +116,7 @@ const escapeHtml = "String($json.warrio_reply).replace(/&/g, '&amp;').replace(/<
 const replyPage = `=<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 24px auto; line-height: 1.6;">
 <h2 style="margin: 0 0 12px;">🛡️ Warrio, Warrantys.co</h2>
 <p style="font-size: 16px;">{{ ${escapeHtml} }}</p>
-{{ $('Pick Plan From Price List').first().json.plan_box_html }}
+{{ (() => { const plan = $('Pick Plan From Price List').first().json; const pay = $('${RAZORPAY_NODE}').isExecuted ? $('${RAZORPAY_NODE}').first().json : {}; const link = plan.make_payment_link && typeof pay.short_url === 'string' && /^https:\\/\\/[\\w./-]+$/.test(pay.short_url) ? pay.short_url : ''; return link ? plan.plan_box_pay_html.split('__PAY_LINK__').join(link) : plan.plan_box_html; })() }}
 <p style="margin-top: 20px; color: #555;">If you prefer, our team is also happy to call you on {{ $json.mobile }}.</p>
 </div>`;
 
@@ -202,11 +207,50 @@ const nodes = [
   },
   geminiHttpNode("Ask Gemini: Write Reply", "$json.reply_url", "$json.reply_body", [1320, 0]),
   {
+    parameters: {
+      conditions: {
+        options: { caseSensitive: true, leftValue: "", typeValidation: "loose", version: 2 },
+        conditions: [
+          {
+            id: "make-payment-link",
+            leftValue: `={{ $('${PLAN_NODE}').first().json.make_payment_link }}`,
+            rightValue: "",
+            operator: { type: "boolean", operation: "true", singleValue: true },
+          },
+        ],
+        combinator: "and",
+      },
+      options: {},
+    },
+    name: PAY_CHECK_NODE,
+    type: "n8n-nodes-base.if",
+    typeVersion: 2.2,
+    position: [1540, 0],
+  },
+  {
+    parameters: {
+      method: "POST",
+      url: "https://api.razorpay.com/v1/payment_links",
+      authentication: "genericCredentialType",
+      genericAuthType: "httpBasicAuth",
+      sendBody: true,
+      specifyBody: "json",
+      jsonBody: `={{ JSON.stringify($('${PLAN_NODE}').first().json.razorpay_body) }}`,
+      options: { timeout: 30000 },
+    },
+    name: RAZORPAY_NODE,
+    type: "n8n-nodes-base.httpRequest",
+    typeVersion: 4.2,
+    position: [1760, -120],
+    onError: "continueRegularOutput",
+    credentials: { httpBasicAuth: { id: "", name: "Razorpay" } },
+  },
+  {
     parameters: { jsCode: finalizeCode },
-    name: "Prepare Lead",
+    name: PREPARE_NODE,
     type: "n8n-nodes-base.code",
     typeVersion: 2,
-    position: [1540, 0],
+    position: [1980, 0],
   },
   {
     parameters: {
@@ -223,7 +267,7 @@ const nodes = [
     name: "Save Lead",
     type: "n8n-nodes-base.dataTable",
     typeVersion: 1.1,
-    position: [1760, 0],
+    position: [2200, 0],
   },
   {
     parameters: {
@@ -234,21 +278,22 @@ const nodes = [
     name: "Show Reply to Customer",
     type: "n8n-nodes-base.form",
     typeVersion: 2.3,
-    position: [1980, 0],
+    position: [2420, 0],
     webhookId: "warrio-reply",
   },
 ];
 
-const chain = nodes.map((node) => node.name);
-const connections = Object.fromEntries(
-  chain.slice(0, -1).map((name, index) => [
-    name,
-    { main: [[{ node: chain[index + 1], type: "main", index: 0 }]] },
-  ])
+// Straight chain, except the "Make Payment Link?" check: yes goes through Razorpay, no skips it.
+const link = (node: string) => [{ node, type: "main", index: 0 }];
+const chain = nodes.map((node) => node.name).filter((name) => name !== RAZORPAY_NODE);
+const connections: Record<string, { main: ReturnType<typeof link>[] }> = Object.fromEntries(
+  chain.slice(0, -1).map((name, index) => [name, { main: [link(chain[index + 1])] }])
 );
+connections[PAY_CHECK_NODE] = { main: [link(RAZORPAY_NODE), link(PREPARE_NODE)] };
+connections[RAZORPAY_NODE] = { main: [link(PREPARE_NODE)] };
 
 const workflow = {
-  name: "Warrio v2.2 Invoice (Gemini)",
+  name: "Warrio v2.3 Invoice (Gemini)",
   nodes: nodes.map((node, index) => ({ id: `warrio-node-${index + 1}`, ...node })),
   connections,
   settings: { executionOrder: "v1" },

@@ -124,18 +124,21 @@ Return only the message text.`;
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const whatsapp = (message) => `https://wa.me/${settings.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 const contactLine = [customer.name && `Name: ${customer.name}`, customer.mobile && `Mobile: ${customer.mobile}`].filter(Boolean).join(', ');
-const planLink = (plan) => settings.PAYMENT_LINK || whatsapp(
+const planLink = (plan) => whatsapp(
   `Hello Warrantys.co, I would like to secure my ${device} with the ${plan.name} (${rupees(plan.price)}). ${contactLine}`.trim());
 const button = (href, label, primary) => `<a href="${esc(href)}" target="_blank" rel="noopener" style="display: block; text-align: center; text-decoration: none; margin-top: 10px; padding: ${primary ? '13px' : '10px'} 14px; border-radius: 10px; font-size: ${primary ? '16px' : '14px'}; font-weight: bold; ${primary ? 'background: #1a7f37; color: #fff;' : 'background: #fff; color: #1a4f8b; border: 1px solid #c7defa;'}">${label}</a>`;
 
-const planBox = recommended
+// payLink: the customer's own Razorpay link, added later by "Prepare Lead". Without it the buttons open WhatsApp.
+const planBox = (payLink) => recommended
   ? `<div style="margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #eef6ff; border: 1px solid #c7defa;">
 <div style="font-size: 13px; color: #555;">Recommended for your ${esc(device)}</div>
 <div style="font-size: 18px; font-weight: bold; margin-top: 4px;">${recommended.name}: ${rupees(recommended.price)}</div>
 <div style="font-size: 13px; color: #555;">Less than Rs ${perDay} a day to keep your repair costs covered.</div>
-${button(planLink(recommended), `🛡️ Secure my ${esc(device)}`, true)}
+${button(payLink || planLink(recommended), `🛡️ Secure my ${esc(device)}`, true)}
 ${options.filter((o) => o !== recommended).map((o) => button(planLink(o), `Choose ${o.name}: ${rupees(o.price)}`, false)).join('\n')}
-<div style="font-size: 12px; color: #666; margin-top: 8px; text-align: center;">${settings.PAYMENT_LINK ? 'Opens our secure payment page.' : 'Opens WhatsApp with your plan details. Our team will share a secure payment link there.'} No card details or OTP are ever asked on chat.</div>
+<div style="font-size: 12px; color: #666; margin-top: 8px; text-align: center;">${payLink
+    ? `The green button opens a secure Razorpay payment page for ${rupees(recommended.price)}. For another plan, tap it and our team will help you on WhatsApp.`
+    : 'Opens WhatsApp with your plan details. Our team will share a secure payment link there.'} No card details or OTP are ever asked on chat.</div>
 </div>`
   : '';
 
@@ -145,6 +148,20 @@ const helpBox = `<div style="margin-top: 16px; padding: 12px 16px; border-radius
 ${button(whatsapp(`Hello Warrantys.co, I have a question about a warranty plan for my ${device || 'device'}. ${contactLine}`.trim()), '💬 Chat with us on WhatsApp', false)}
 ${button(`tel:+${settings.WHATSAPP_NUMBER}`, `📞 Call us: ${settings.PHONE_DISPLAY}`, false)}
 </div>`;
+
+// Razorpay wants the amount in paise and the mobile with its country code.
+const mobileDigits = String(customer.mobile || '').replace(/\D/g, '');
+const contact = mobileDigits.length === 10 ? '+91' + mobileDigits : (mobileDigits.length === 12 && mobileDigits.startsWith('91') ? '+' + mobileDigits : '');
+const razorpayBody = recommended ? {
+  amount: recommended.price * 100,
+  currency: 'INR',
+  accept_partial: false,
+  description: `Warrantys.co ${recommended.name} for your ${device}`.slice(0, 2048),
+  customer: Object.fromEntries(Object.entries({ name: customer.name, contact, email: customer.email }).filter(([, v]) => v)),
+  notify: { sms: false, email: false },
+  reminder_enable: false,
+  notes: { plan: recommended.name, device, mobile: customer.mobile || '' },
+} : null;
 
 return [{ json: {
   customer,
@@ -163,6 +180,9 @@ return [{ json: {
     // Generous limit: newer Gemini models spend part of it on thinking.
     generationConfig: { temperature: 0.6, maxOutputTokens: 4096 },
   },
-  plan_box_html: planBox + helpBox,
+  plan_box_html: planBox('') + helpBox,
+  plan_box_pay_html: planBox('__PAY_LINK__') + helpBox,
+  make_payment_link: Boolean(recommended) && settings.USE_RAZORPAY === true,
+  razorpay_body: razorpayBody,
   skip_ai_reply: Boolean(aiError) || !isInvoice,
 } }];
