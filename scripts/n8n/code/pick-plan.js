@@ -1,0 +1,148 @@
+// Picks the plan and price from the price list. The AI never sets a price.
+const settings = $('Warrio Settings (edit here)').first().json;
+const prepared = $('Build Gemini Request').first().json;
+const response = $input.first().json;
+
+let read = null;
+let aiError = '';
+try {
+  if (response.error) throw new Error(typeof response.error === 'string' ? response.error : (response.error.message || JSON.stringify(response.error)));
+  read = JSON.parse(response.candidates[0].content.parts[0].text);
+} catch (error) {
+  aiError = 'Gemini could not read the invoice: ' + String(error.message || error).slice(0, 300);
+}
+
+const text = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+const invoice = {
+  seller: text(read?.seller),
+  invoice_number: text(read?.invoice_number),
+  invoice_date: text(read?.invoice_date),
+  name_on_invoice: text(read?.name_on_invoice),
+  product_category: text(read?.product_category) || 'Other',
+  brand: text(read?.brand),
+  model: text(read?.model),
+  serial_or_imei: text(read?.serial_or_imei),
+  price_inr: typeof read?.price_inr === 'number' && read.price_inr > 0 ? Math.round(read.price_inr) : null,
+  purchase_country: text(read?.purchase_country),
+};
+const isInvoice = read?.is_invoice === true;
+
+// Days since purchase, by calendar date.
+let days = null;
+if (/^\d{4}-\d{2}-\d{2}$/.test(invoice.invoice_date || '')) {
+  const bought = Date.parse(invoice.invoice_date + 'T00:00:00Z');
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (!Number.isNaN(bought)) days = Math.round((today - bought) / 86400000);
+}
+
+const category = settings.PRICE_LIST.find((c) => c.name === invoice.product_category);
+let options = [];
+if (category && invoice.price_inr !== null) {
+  const band = category.bands.find(([min, max], i) =>
+    i === 0 ? invoice.price_inr >= min && invoice.price_inr <= max : invoice.price_inr > min && invoice.price_inr <= max);
+  if (band) {
+    options = band.slice(2).flatMap((price, i) => price === null ? [] : [{ name: `${category.short} ${i + 1}-year plan`, years: i + 1, price }]);
+  }
+}
+
+const notes = [];
+let eligible = false;
+if (aiError) notes.push(aiError);
+else if (!isInvoice) notes.push('File is not a readable invoice.');
+else if (!category) notes.push('Product is not in the Warrio price list.');
+else if (invoice.price_inr === null) notes.push('Device price could not be read.');
+else if (options.length === 0) notes.push(`No ${category.short} plan for a device of Rs ${invoice.price_inr}.`);
+else if (days === null) notes.push('Invoice date could not be read.');
+else if (days < 0) notes.push('Invoice date is in the future.');
+else if (days > settings.PURCHASE_WINDOW_DAYS) notes.push(`Bought ${days} days ago, outside the ${settings.PURCHASE_WINDOW_DAYS}-day plan window.`);
+else if (invoice.purchase_country && invoice.purchase_country.toLowerCase() !== settings.COUNTRY.toLowerCase()) notes.push(`Bought in ${invoice.purchase_country}, not ${settings.COUNTRY}.`);
+else eligible = true;
+
+const recommended = eligible
+  ? (settings.RECOMMEND === 'shortest' ? options[0] : options[options.length - 1])
+  : null;
+
+const customer = prepared.customer;
+const firstName = (customer.name || invoice.name_on_invoice || '').split(/\s+/)[0];
+const rupees = (n) => 'Rs ' + Number(n).toLocaleString('en-IN');
+const device = [invoice.brand, invoice.model].filter(Boolean).join(' ') || invoice.product_category;
+
+const perDay = recommended ? Math.ceil(recommended.price / (recommended.years * 365)) : null;
+const hello = firstName ? `Hi ${firstName}` : 'Hi there';
+
+// Used when the second Gemini step fails, so the customer still gets a complete answer.
+let fallbackReply;
+if (aiError) {
+  fallbackReply = `${hello} 🙏\nThank you for trusting Warrantys.co with your invoice.\nOur team will personally check it and call you with the best plan for your device.`;
+} else if (!isInvoice) {
+  fallbackReply = `${hello} 🙏\nThank you for reaching out to Warrantys.co.\nWe could not read the device details from this file. Please upload a clear photo or PDF of the full purchase invoice, and Warrio will suggest the right plan in a minute.`;
+} else if (!recommended) {
+  fallbackReply = `${hello} 🙏\nThank you for sharing the invoice for your ${device}.\nOur team will personally check the details and call you with the best option for you.`;
+} else {
+  fallbackReply = `${hello} 😊\nI can see your ${device}${invoice.price_inr ? ' bought for ' + rupees(invoice.price_inr) : ''}. Great choice!\nOnce the brand warranty ends, repairs can be costly and stressful.\nThe ${recommended.name} keeps it protected for just ${rupees(recommended.price)}, less than Rs ${perDay} a day.\nRepairs are 100% cashless with authorized technicians and genuine parts, and if it cannot be repaired you get a replacement or a full refund.\nReply YES and our team will send you the payment link. 🛡️`;
+}
+
+const replyPrompt = `You are Warrio, the warm and caring sales assistant of Warrantys.co. Write a WhatsApp-style reply to the customer.
+
+TONE
+- Warm, personal and reassuring, like a helpful friend who understands how much the device matters to them. Not pushy, not robotic.
+- Show you understand the worry: repairs after the brand warranty ends can be expensive and stressful.
+- Make the value feel real: say the plan costs less than Rs ${perDay ?? '-'} a day.
+- Language: ${read?.customer_language || 'english'}. If hindi or hinglish, write in that language; otherwise simple English.
+- 6 to 9 short lines. You may use 1 or 2 friendly emojis.
+
+STRUCTURE
+1. Greet by first name (${firstName || 'no name, greet warmly without a name'}) and thank them.
+2. Confirm the device you found, e.g. "I can see your Samsung 43 inch TV bought on 10 Oct 2026 for Rs 42,000."
+3. Recommend the plan below by its exact name and exact price.
+4. Two or three short benefits, chosen only from the WHY WARRANTYS.CO list.
+5. Mention the cheaper alternative in one line only if one is listed below.
+6. End with: "Reply YES and our team will send you the payment link."
+
+STRICT RULES
+- Use ONLY the plan names and prices below. Never invent a price, plan, discount, offer or coverage.
+- If no plan is recommended below, do not recommend any plan or payment. Say warmly that a team member from Warrantys.co will personally check and call them.
+- Never promise claim approval. Never ask for card numbers, OTPs or bank details.
+- Write the full message. Never stop mid-sentence.
+
+WHY WARRANTYS.CO: ${settings.WHY_WARRIO.join('; ')}.
+WHAT IS COVERED: ${settings.COVERED}, after the brand warranty ends, as per the plan terms.
+NOT COVERED: ${settings.NOT_COVERED}.
+
+Customer's question: ${customer.question || 'none'}
+Invoice details: ${JSON.stringify(invoice)}
+Recommended plan: ${recommended ? recommended.name + ', ' + rupees(recommended.price) : 'none'}
+Cheaper alternatives: ${eligible ? options.filter((o) => o !== recommended).map((o) => o.name + ', ' + rupees(o.price)).join('; ') || 'none' : 'none'}
+
+Return only the message text.`;
+
+// The plan box on the reply page always comes from the price list, never from the AI.
+const planBox = recommended
+  ? `<div style="margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #eef6ff; border: 1px solid #c7defa;">
+<div style="font-size: 13px; color: #555;">Recommended for your ${device}</div>
+<div style="font-size: 18px; font-weight: bold; margin-top: 4px;">${recommended.name}: ${rupees(recommended.price)}</div>
+${options.filter((o) => o !== recommended).map((o) => `<div style="font-size: 14px; color: #444; margin-top: 4px;">${o.name}: ${rupees(o.price)}</div>`).join('\n')}
+</div>`
+  : '';
+
+return [{ json: {
+  customer,
+  invoice_file: prepared.invoice_file,
+  is_invoice: isInvoice,
+  invoice,
+  days_since_purchase: days,
+  recommended_plan: recommended ? recommended.name : null,
+  plan_price_inr: recommended ? recommended.price : 0,
+  notes_for_team: [text(read?.notes_for_team), ...notes].filter(Boolean).join(' '),
+  status: aiError ? 'check_invoice' : (eligible ? 'new' : 'team_to_call'),
+  fallback_reply: fallbackReply,
+  reply_url: prepared.gemini_url,
+  reply_body: {
+    contents: [{ role: 'user', parts: [{ text: replyPrompt }] }],
+    // Generous limit: newer Gemini models spend part of it on thinking.
+    generationConfig: { temperature: 0.6, maxOutputTokens: 4096 },
+  },
+  plan_box_html: planBox,
+  skip_ai_reply: Boolean(aiError) || !isInvoice,
+} }];

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // n8n Code node scripts run inside n8n, not in this app.
+    "scripts/n8n/code/**",
   ]),
 ]);
 
