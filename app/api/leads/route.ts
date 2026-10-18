@@ -2,24 +2,33 @@ import { randomInt } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { warrantyProducts } from "@/app/data/products";
 import {
+  daysSincePurchase,
+  findPlanQuote,
+  isWithinPurchaseWindow,
+  quotePlans,
+} from "@/app/lib/agents/sales/pricing";
+import type { SalesAnalysis } from "@/app/lib/agents/sales/types";
+import { sendLeadToN8n } from "@/app/lib/integrations/n8n";
+import {
+  isSupportedInvoiceFile,
   MAX_INVOICE_UPLOAD_BYTES,
-  SUPPORTED_INVOICE_MIME_TYPES,
-} from "@/app/lib/ai/provider";
-
-const televisionProduct = warrantyProducts.find(
-  (product) => product.id === "television"
-)!;
+} from "@/app/lib/invoiceFile";
 
 function getValue(values: FormData | Record<string, unknown>, key: string) {
   const value = values instanceof FormData ? values.get(key) : values[key];
   return typeof value === "string" ? value.trim() : "";
 }
 
-function isSupportedInvoiceFile(file: File) {
-  if (SUPPORTED_INVOICE_MIME_TYPES.has(file.type)) return true;
-  return /\.(pdf|jpg|jpeg|png|webp|gif|heic|heif)$/i.test(file.name);
+// The analysis comes back from the browser, so it is only used to fill in the
+// lead record. Plan, price and eligibility are checked again below.
+function readAnalysis(raw: string): Partial<SalesAnalysis> {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 function createLeadReference() {
@@ -43,23 +52,24 @@ export async function POST(request: Request) {
       values = await request.json();
     }
 
-    const selectedPlanId = getValue(values, "selectedPlanId");
-    const selectedPlan = televisionProduct.plans.find(
-      (plan) => plan.id === selectedPlanId
-    );
-    const eligibilityStatus = getValue(values, "eligibilityStatus");
+    const selectedPlan = findPlanQuote(getValue(values, "selectedPlanId"));
+    const priceInr = Number(getValue(values, "priceInr"));
+    const purchaseDate = getValue(values, "purchaseDate");
     const consent = getValue(values, "consent") === "true";
     const email = getValue(values, "email");
     const mobile = getValue(values, "mobile");
     const errors: string[] = [];
 
-    if (getValue(values, "product") !== "Television") {
-      errors.push("Only Television warranty requests are supported in this V1.");
+    if (!selectedPlan) {
+      errors.push("Please select one valid plan.");
+    } else if (
+      !Number.isFinite(priceInr) ||
+      !quotePlans(selectedPlan.category_id, priceInr).some(
+        (plan) => plan.id === selectedPlan.id
+      )
+    ) {
+      errors.push("The selected plan does not match the device price.");
     }
-    if (eligibilityStatus !== "eligible") {
-      errors.push("Eligibility must be confirmed before payment setup.");
-    }
-    if (!selectedPlan) errors.push("Please select one valid Television plan.");
     if (!getValue(values, "fullName")) errors.push("Full name is required.");
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       errors.push("A valid 10-digit mobile number is required.");
@@ -70,7 +80,14 @@ export async function POST(request: Request) {
     if (!getValue(values, "brand")) errors.push("Brand is required.");
     if (!getValue(values, "model")) errors.push("Model is required.");
     if (!getValue(values, "serialNumber")) errors.push("Serial number is required.");
-    if (!getValue(values, "purchaseDate")) errors.push("Purchase date is required.");
+    if (!purchaseDate) {
+      errors.push("Purchase date is required.");
+    } else if (
+      (daysSincePurchase(purchaseDate) ?? -1) < 0 ||
+      !isWithinPurchaseWindow(purchaseDate)
+    ) {
+      errors.push("The purchase date is outside the plan window.");
+    }
     if (!consent) errors.push("Consent is required to proceed.");
 
     if (invoice && invoice.size > MAX_INVOICE_UPLOAD_BYTES) {
@@ -86,15 +103,47 @@ export async function POST(request: Request) {
       );
     }
 
+    const leadReference = createLeadReference();
+    const analysis = readAnalysis(getValue(values, "analysis"));
+
+    const n8n = await sendLeadToN8n({
+      date: new Date().toISOString(),
+      name: getValue(values, "fullName"),
+      mobile,
+      email,
+      question: getValue(values, "question"),
+      invoice_ok: analysis.is_invoice === true,
+      invoice_file: invoice?.name ?? "",
+      seller: analysis.invoice?.seller ?? null,
+      invoice_number: analysis.invoice?.invoice_number ?? null,
+      invoice_date: analysis.invoice?.invoice_date ?? null,
+      name_on_invoice: analysis.invoice?.name_on_invoice ?? null,
+      product_category: selectedPlan.category_name,
+      brand: getValue(values, "brand"),
+      model: getValue(values, "model"),
+      serial_or_imei: getValue(values, "serialNumber"),
+      price_inr: priceInr,
+      days_since_purchase: daysSincePurchase(purchaseDate),
+      recommended_plan: selectedPlan.plan_name,
+      plan_price_inr: selectedPlan.price_inr,
+      notes_for_team:
+        typeof analysis.notes_for_team === "string" ? analysis.notes_for_team : "",
+      warrio_reply: typeof analysis.reply === "string" ? analysis.reply : "",
+      status: "new",
+      source: "website",
+      lead_reference: leadReference,
+    });
+
     return NextResponse.json({
       success: true,
-      leadReference: createLeadReference(),
+      leadReference,
+      n8n,
       order: {
-        product: "Television",
+        product: selectedPlan.category_name,
         planId: selectedPlan.id,
-        tenure: selectedPlan.tenure,
-        price: selectedPlan.price,
-        currency: selectedPlan.currency,
+        tenureYears: selectedPlan.tenure_years,
+        price: selectedPlan.price_inr,
+        currency: "INR",
         invoiceStatus: invoice ? "received" : "not_uploaded",
       },
     });
