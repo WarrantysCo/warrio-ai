@@ -394,7 +394,7 @@ export const priceCategories: PriceCategory[] = [
   {
     id: "small-appliance",
     shortName: "Small Appliance",
-    name: "Small Appliance (Air Purifier, Cooler, Room Heater, Fan, Geyser, Iron, Food Processor, Induction, Juicer, Kettle, Toaster)",
+    name: "Small Appliance (Air Purifier, Cooler, Room Heater, Fan, Geyser, Iron, Food Processor, Mixer Grinder, Induction, Juicer, Kettle, Toaster)",
     icon: "🔌",
     bands: [
       [0, 2500, 138, 169, 220],

@@ -1,3 +1,4 @@
+import { deliveryText, faqText, refundPolicyText } from "@/app/data/policies";
 import { salesRules } from "@/app/data/salesRules";
 import { warrantyTerms } from "@/app/data/warrantyTerms";
 
@@ -28,5 +29,14 @@ WHAT IS NOT COVERED
 ${salesRules.exclusions.join(", ")}.
 
 VERIFIED WARRANTY TERMS
-${JSON.stringify(warrantyTerms, null, 2)}`;
+${JSON.stringify(warrantyTerms, null, 2)}
+
+WEBSITE FAQ
+${faqText}
+
+REFUND POLICY
+${refundPolicyText}
+
+CERTIFICATE DELIVERY
+${deliveryText}`;
 }

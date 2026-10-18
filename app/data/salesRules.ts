@@ -1,14 +1,14 @@
 // Business rules the sales agent applies after reading an invoice. Prices live
 // in priceList.ts; everything here is policy that can change without touching
 // the price sheet.
-// Plan must be bought within this many months of the invoice date. Carried
-// over from the V1 Television data; confirm with the business before launch.
-const PURCHASE_WINDOW_MONTHS = 9;
+
+// Plan must be bought within this many days of the invoice date (website FAQ).
+const PURCHASE_WINDOW_DAYS = 270;
 
 export const salesRules = {
   country: "India",
 
-  purchaseWindowMonths: PURCHASE_WINDOW_MONTHS,
+  purchaseWindowDays: PURCHASE_WINDOW_DAYS,
 
   // Which plan Warrio recommends when several tenures are sold for a band.
   recommend: "longest" as "longest" | "shortest",
@@ -28,5 +28,5 @@ export const salesRules = {
     "AC gas",
   ],
 
-  eligibility: `New products bought in India, with the plan bought within ${PURCHASE_WINDOW_MONTHS} months of the invoice date.`,
+  eligibility: `New (not refurbished) products bought in India with an invoice and manufacturer's warranty, with the plan bought within ${PURCHASE_WINDOW_DAYS} days of the invoice date.`,
 };

@@ -94,11 +94,8 @@ export function daysSincePurchase(invoiceDate: string | null, now = new Date()) 
 }
 
 export function isWithinPurchaseWindow(invoiceDate: string, now = new Date()) {
-  const purchased = new Date(`${invoiceDate}T00:00:00Z`);
-  const windowStart = new Date(now);
-  windowStart.setUTCMonth(windowStart.getUTCMonth() - salesRules.purchaseWindowMonths);
-  windowStart.setUTCHours(0, 0, 0, 0);
-  return purchased >= windowStart && purchased <= now;
+  const days = daysSincePurchase(invoiceDate, now);
+  return days !== null && days >= 0 && days <= salesRules.purchaseWindowDays;
 }
 
 function formatRupees(amount: number) {
@@ -152,7 +149,7 @@ export function decideSale(invoice: InvoiceDetails, now = new Date()): SalesDeci
   }
   if (!isWithinPurchaseWindow(invoice.invoice_date!, now)) {
     return ineligible(
-      `Bought ${days} days ago, outside the ${salesRules.purchaseWindowMonths}-month plan window.`
+      `Bought ${days} days ago, outside the ${salesRules.purchaseWindowDays}-day plan window.`
     );
   }
   if (

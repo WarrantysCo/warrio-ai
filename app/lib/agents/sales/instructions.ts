@@ -84,7 +84,7 @@ ${strictRules}
 
 ELIGIBILITY
 - Product must be bought new in ${salesRules.country}.
-- Plan must be bought within ${salesRules.purchaseWindowMonths} months of the invoice date.
+- Plan must be bought within ${salesRules.purchaseWindowDays} days of the invoice date.
 
 HOW TO PICK THE PLAN
 - Find the product category, then the row whose device price range contains the invoice price.
