@@ -117,7 +117,7 @@ function fallbackReply(
     return `${greeting}\nThank you for sharing your invoice${device ? ` for your ${device}` : ""}.\nA team member from Warrantys.co will check the details and call you shortly.`;
   }
 
-  return `${greeting}\nI can see your ${device || getCategory(invoice.product_category)?.name}${invoice.price_inr ? ` bought for Rs ${invoice.price_inr.toLocaleString("en-IN")}` : ""}.\nI recommend the ${decision.recommended_plan} for Rs ${decision.plan_price_inr?.toLocaleString("en-IN")}.\nIt covers repairs of manufacturing and electrical faults after the brand warranty ends.\nReply YES and our team will send you the payment link.`;
+  return `${greeting}\nI can see your ${device || getCategory(invoice.product_category)?.name}${invoice.price_inr ? ` bought for Rs ${invoice.price_inr.toLocaleString("en-IN")}` : ""}.\nI recommend the ${decision.recommended_plan} for Rs ${decision.plan_price_inr?.toLocaleString("en-IN")}.\nIt covers repairs of manufacturing and electrical faults after the brand warranty ends.\nWhenever you feel ready, our team can share a secure payment link. If you have any question, I am happy to help.`;
 }
 
 const NOT_INVOICE_REPLY =

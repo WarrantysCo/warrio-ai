@@ -66,7 +66,8 @@ const recommended = eligible
 const customer = prepared.customer;
 const firstName = (customer.name || invoice.name_on_invoice || '').split(/\s+/)[0];
 const rupees = (n) => 'Rs ' + Number(n).toLocaleString('en-IN');
-const device = [invoice.brand, invoice.model].filter(Boolean).join(' ') || invoice.product_category;
+// Short label, e.g. "Hisense TV". Long model numbers stay in the saved lead only.
+const device = [invoice.brand, category ? category.short : invoice.product_category].filter(Boolean).join(' ');
 
 const perDay = recommended ? Math.ceil(recommended.price / (recommended.years * 365)) : null;
 const hello = firstName ? `Hi ${firstName}` : 'Hi there';
@@ -80,13 +81,15 @@ if (aiError) {
 } else if (!recommended) {
   fallbackReply = `${hello} 🙏\nThank you for sharing the invoice for your ${device}.\nOur team will personally check the details and call you with the best option for you.`;
 } else {
-  fallbackReply = `${hello} 😊\nI can see your ${device}${invoice.price_inr ? ' bought for ' + rupees(invoice.price_inr) : ''}. Great choice!\nOnce the brand warranty ends, repairs can be costly and stressful.\nThe ${recommended.name} keeps it protected for just ${rupees(recommended.price)}, less than Rs ${perDay} a day.\nRepairs are 100% cashless with authorized technicians and genuine parts, and if it cannot be repaired you get a replacement or a full refund.\nReply YES and our team will send you the payment link. 🛡️`;
+  fallbackReply = `${hello} 😊\nI can see your ${device}${invoice.price_inr ? ' bought for ' + rupees(invoice.price_inr) : ''}. Great choice!\nOnce the brand warranty ends, repairs can be costly and stressful.\nThe ${recommended.name} secures your future repair expenses for ${rupees(recommended.price)}, less than Rs ${perDay} a day.\nRepairs are 100% cashless with authorized technicians and genuine parts, and if it cannot be repaired you get a replacement or a full refund.\nWhenever you feel ready, you can secure it with the button below. And if you have any question at all, I am happy to help. 🛡️`;
 }
 
 const replyPrompt = `You are Warrio, the warm and caring sales assistant of Warrantys.co. Write a WhatsApp-style reply to the customer.
 
 TONE
-- Warm, personal and reassuring, like a helpful friend who understands how much the device matters to them. Not pushy, not robotic.
+- Warm, personal, decent and respectful, like a helpful friend who understands how much the device matters to them. Never pushy, never robotic.
+- Frame the plan as securing their future repair expenses and peace of mind, a small step that protects money they have already spent.
+- No pressure or urgency: never say "hurry", "limited time", "last chance", "only today", "don't miss" or anything similar. The customer decides in their own time.
 - Show you understand the worry: repairs after the brand warranty ends can be expensive and stressful.
 - Make the value feel real: say the plan costs less than Rs ${perDay ?? '-'} a day.
 - Language: ${read?.customer_language || 'english'}. If hindi or hinglish, write in that language; otherwise simple English.
@@ -98,7 +101,7 @@ STRUCTURE
 3. Recommend the plan below by its exact name and exact price.
 4. Two or three short benefits, chosen only from the WHY WARRANTYS.CO list.
 5. Mention the cheaper alternative in one line only if one is listed below.
-6. End with: "Reply YES and our team will send you the payment link."
+6. End gently, for example: "Whenever you feel ready, you can secure your TV with the button below. If you have any question, I am happy to help." Do not ask them to reply YES or type anything; the buttons below the message do that.
 
 STRICT RULES
 - Use ONLY the plan names and prices below. Never invent a price, plan, discount, offer or coverage.
@@ -117,14 +120,31 @@ Cheaper alternatives: ${eligible ? options.filter((o) => o !== recommended).map(
 
 Return only the message text.`;
 
-// The plan box on the reply page always comes from the price list, never from the AI.
+// The plan box and buttons on the reply page always come from the price list, never from the AI.
+const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const whatsapp = (message) => `https://wa.me/${settings.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+const contactLine = [customer.name && `Name: ${customer.name}`, customer.mobile && `Mobile: ${customer.mobile}`].filter(Boolean).join(', ');
+const planLink = (plan) => settings.PAYMENT_LINK || whatsapp(
+  `Hello Warrantys.co, I would like to secure my ${device} with the ${plan.name} (${rupees(plan.price)}). ${contactLine}`.trim());
+const button = (href, label, primary) => `<a href="${esc(href)}" target="_blank" rel="noopener" style="display: block; text-align: center; text-decoration: none; margin-top: 10px; padding: ${primary ? '13px' : '10px'} 14px; border-radius: 10px; font-size: ${primary ? '16px' : '14px'}; font-weight: bold; ${primary ? 'background: #1a7f37; color: #fff;' : 'background: #fff; color: #1a4f8b; border: 1px solid #c7defa;'}">${label}</a>`;
+
 const planBox = recommended
   ? `<div style="margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #eef6ff; border: 1px solid #c7defa;">
-<div style="font-size: 13px; color: #555;">Recommended for your ${device}</div>
+<div style="font-size: 13px; color: #555;">Recommended for your ${esc(device)}</div>
 <div style="font-size: 18px; font-weight: bold; margin-top: 4px;">${recommended.name}: ${rupees(recommended.price)}</div>
-${options.filter((o) => o !== recommended).map((o) => `<div style="font-size: 14px; color: #444; margin-top: 4px;">${o.name}: ${rupees(o.price)}</div>`).join('\n')}
+<div style="font-size: 13px; color: #555;">Less than Rs ${perDay} a day to keep your repair costs covered.</div>
+${button(planLink(recommended), `🛡️ Secure my ${esc(device)}`, true)}
+${options.filter((o) => o !== recommended).map((o) => button(planLink(o), `Choose ${o.name}: ${rupees(o.price)}`, false)).join('\n')}
+<div style="font-size: 12px; color: #666; margin-top: 8px; text-align: center;">${settings.PAYMENT_LINK ? 'Opens our secure payment page.' : 'Opens WhatsApp with your plan details. Our team will share a secure payment link there.'} No card details or OTP are ever asked on chat.</div>
 </div>`
   : '';
+
+// Always offer a way to ask or talk, whether or not a plan was found.
+const helpBox = `<div style="margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: #f6f6f6;">
+<div style="font-size: 14px; color: #333;">Have a question, or would you like to talk first?</div>
+${button(whatsapp(`Hello Warrantys.co, I have a question about a warranty plan for my ${device || 'device'}. ${contactLine}`.trim()), '💬 Chat with us on WhatsApp', false)}
+${button(`tel:+${settings.WHATSAPP_NUMBER}`, `📞 Call us: ${settings.PHONE_DISPLAY}`, false)}
+</div>`;
 
 return [{ json: {
   customer,
@@ -143,6 +163,6 @@ return [{ json: {
     // Generous limit: newer Gemini models spend part of it on thinking.
     generationConfig: { temperature: 0.6, maxOutputTokens: 4096 },
   },
-  plan_box_html: planBox,
+  plan_box_html: planBox + helpBox,
   skip_ai_reply: Boolean(aiError) || !isInvoice,
 } }];

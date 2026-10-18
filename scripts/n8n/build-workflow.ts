@@ -2,7 +2,7 @@
 // price list and rules the website uses.
 //
 // Run from the repo root:
-//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.1-Gemini.json
+//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.2-Gemini.json
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -71,6 +71,14 @@ const RECOMMEND = "${salesRules.recommend}";
 
 const COUNTRY = "${salesRules.country}";
 
+// WhatsApp number for the plan and question buttons: country code + number, no spaces or +.
+const WHATSAPP_NUMBER = "918875192691";
+const PHONE_DISPLAY = "88751 92691";
+
+// Optional: paste a payment page link (for example a Razorpay payment page) between the quotes.
+// When it is empty, the plan buttons open WhatsApp with the plan details instead.
+const PAYMENT_LINK = "";
+
 const COVERED = ${JSON.stringify(salesRules.coverage.join(", "))};
 
 // Why customers should buy. Only true promises from the Warrantys.co website FAQ and refund policy.
@@ -90,7 +98,7 @@ const PRICE_LIST = ${priceListCode()};
 
 // Carry the uploaded invoice forward from the form.
 return [{
-  json: { MODEL, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
+  json: { MODEL, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, PAYMENT_LINK, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
   binary: $('${FORM_NODE}').first().binary,
 }];
 `;
@@ -104,7 +112,7 @@ const replyPage = `=<div style="font-family: Arial, sans-serif; max-width: 560px
 <h2 style="margin: 0 0 12px;">🛡️ Warrio, Warrantys.co</h2>
 <p style="font-size: 16px;">{{ ${escapeHtml} }}</p>
 {{ $('Pick Plan From Price List').first().json.plan_box_html }}
-<p style="margin-top: 20px; color: #555;">Our team will also call you on {{ $json.mobile }}.</p>
+<p style="margin-top: 20px; color: #555;">If you prefer, our team is also happy to call you on {{ $json.mobile }}.</p>
 </div>`;
 
 const geminiHttpNode = (name: string, urlExpr: string, bodyExpr: string, position: [number, number]) => ({
@@ -240,7 +248,7 @@ const connections = Object.fromEntries(
 );
 
 const workflow = {
-  name: "Warrio v2.1 Invoice (Gemini)",
+  name: "Warrio v2.2 Invoice (Gemini)",
   nodes: nodes.map((node, index) => ({ id: `warrio-node-${index + 1}`, ...node })),
   connections,
   settings: { executionOrder: "v1" },

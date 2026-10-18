@@ -32,7 +32,7 @@ plan from the price list → Gemini writes the reply → row in the
 "Warrio Leads" data table → reply page. Regenerate it after a price change:
 
 ```bash
-JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.1-Gemini.json
+JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.2-Gemini.json
 ```
 
 ## Settings
