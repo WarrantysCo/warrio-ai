@@ -24,6 +24,17 @@ Prices come from `Product cost for Warrio Database_290726.xlsx` and live in
 `buildN8nInstructions()` in `app/lib/agents/sales/instructions.ts` produces the
 same rules and prices as text for the n8n "Warrio Instructions" step.
 
+## n8n workflow
+
+`scripts/n8n/build-workflow.ts` builds "Warrio v2 Invoice (Gemini)", an n8n
+workflow with the same prices and rules: form → Gemini reads the invoice →
+plan from the price list → Gemini writes the reply → row in the
+"Warrio Leads" data table → reply page. Regenerate it after a price change:
+
+```bash
+JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2-Gemini.json
+```
+
 ## Settings
 
 | Name | Needed for |
