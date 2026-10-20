@@ -189,5 +189,5 @@ return [{ json: {
   plan_box_pay_html: planBox('__PAY_LINK__') + helpBox,
   make_payment_link: Boolean(recommended) && settings.USE_RAZORPAY === true,
   razorpay_body: razorpayBody,
-  skip_ai_reply: Boolean(aiError) || !isInvoice,
+  skip_ai_reply: Boolean(aiError) || !isInvoice || settings.AI_WRITES_REPLY !== true,
 } }];

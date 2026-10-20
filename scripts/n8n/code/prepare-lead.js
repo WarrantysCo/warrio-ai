@@ -1,6 +1,6 @@
 // Builds one row for the "Warrio Leads" table.
 const plan = $('Pick Plan From Price List').first().json;
-const response = $('Ask Gemini: Write Reply').first().json;
+const response = $('Ask Gemini: Write Reply').isExecuted ? $('Ask Gemini: Write Reply').first().json : {};
 
 // The customer's own Razorpay link, when it was made. Any failure falls back to WhatsApp.
 let paymentLink = '';

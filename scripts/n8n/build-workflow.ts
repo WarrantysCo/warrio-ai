@@ -2,7 +2,7 @@
 // price list and rules the website uses.
 //
 // Run from the repo root:
-//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.4-Gemini.json
+//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.5-Gemini.json
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,6 +15,8 @@ const FORM_NODE = "Enquiry Form";
 const TABLE_NODE = "Create Leads Table (first time only)";
 const PLAN_NODE = "Pick Plan From Price List";
 const PAY_CHECK_NODE = "Make Payment Link?";
+const REPLY_CHECK_NODE = "Gemini Writes Reply?";
+const REPLY_NODE = "Ask Gemini: Write Reply";
 const RAZORPAY_NODE = "Create Razorpay Payment Link";
 const PREPARE_NODE = "Prepare Lead";
 
@@ -64,8 +66,13 @@ function priceListCode() {
 
 const settingsCode = `// ===== WARRIO SETTINGS: edit prices and rules here =====
 
-// Gemini model. "gemini-flash-latest" always points to Google's current Flash model.
-const MODEL = "gemini-flash-latest";
+// Gemini model that reads the invoice. "gemini-flash-lite-latest" is Google's fastest model.
+// For harder invoices you can use "gemini-flash-latest" (more careful, but slower).
+const MODEL = "gemini-flash-lite-latest";
+
+// false: the customer gets Warrio's ready-made warm message at once (fastest).
+// true: Gemini writes a personal message first, which adds waiting time.
+const AI_WRITES_REPLY = false;
 
 // Plan must be bought within this many days of the invoice date.
 const PURCHASE_WINDOW_DAYS = ${salesRules.purchaseWindowDays};
@@ -103,7 +110,7 @@ const PRICE_LIST = ${priceListCode()};
 
 // Carry the uploaded invoice forward from the form.
 return [{
-  json: { MODEL, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, USE_RAZORPAY, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
+  json: { MODEL, AI_WRITES_REPLY, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, USE_RAZORPAY, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
   binary: $('${FORM_NODE}').first().binary,
 }];
 `;
@@ -129,8 +136,8 @@ const geminiHttpNode = (name: string, urlExpr: string, bodyExpr: string, positio
     sendBody: true,
     specifyBody: "json",
     jsonBody: `={{ JSON.stringify(${bodyExpr}) }}`,
-    // A stuck call gives up after 45 seconds instead of keeping the customer waiting.
-    options: { timeout: 45000 },
+    // A stuck call gives up after 30 seconds instead of keeping the customer waiting.
+    options: { timeout: 30000 },
   },
   name,
   type: "n8n-nodes-base.httpRequest",
@@ -210,7 +217,28 @@ const nodes = [
     typeVersion: 2,
     position: [1100, 0],
   },
-  geminiHttpNode("Ask Gemini: Write Reply", "$json.reply_url", "$json.reply_body", [1320, 0]),
+  {
+    parameters: {
+      conditions: {
+        options: { caseSensitive: true, leftValue: "", typeValidation: "loose", version: 2 },
+        conditions: [
+          {
+            id: "ai-writes-reply",
+            leftValue: `={{ $('${PLAN_NODE}').first().json.skip_ai_reply }}`,
+            rightValue: "",
+            operator: { type: "boolean", operation: "false", singleValue: true },
+          },
+        ],
+        combinator: "and",
+      },
+      options: {},
+    },
+    name: REPLY_CHECK_NODE,
+    type: "n8n-nodes-base.if",
+    typeVersion: 2.2,
+    position: [1320, 0],
+  },
+  geminiHttpNode(REPLY_NODE, "$json.reply_url", "$json.reply_body", [1540, -120]),
   {
     parameters: {
       conditions: {
@@ -230,7 +258,7 @@ const nodes = [
     name: PAY_CHECK_NODE,
     type: "n8n-nodes-base.if",
     typeVersion: 2.2,
-    position: [1540, 0],
+    position: [1760, 0],
   },
   {
     parameters: {
@@ -246,7 +274,7 @@ const nodes = [
     name: RAZORPAY_NODE,
     type: "n8n-nodes-base.httpRequest",
     typeVersion: 4.2,
-    position: [1760, -120],
+    position: [1980, -120],
     onError: "continueRegularOutput",
     credentials: { httpBasicAuth: { id: "", name: "Razorpay" } },
   },
@@ -255,7 +283,7 @@ const nodes = [
     name: PREPARE_NODE,
     type: "n8n-nodes-base.code",
     typeVersion: 2,
-    position: [1980, 0],
+    position: [2200, 0],
   },
   {
     parameters: {
@@ -272,7 +300,7 @@ const nodes = [
     name: "Save Lead",
     type: "n8n-nodes-base.dataTable",
     typeVersion: 1.1,
-    position: [2200, 0],
+    position: [2420, 0],
   },
   {
     parameters: {
@@ -283,22 +311,24 @@ const nodes = [
     name: "Show Reply to Customer",
     type: "n8n-nodes-base.form",
     typeVersion: 2.3,
-    position: [2420, 0],
+    position: [2640, 0],
     webhookId: "warrio-reply",
   },
 ];
 
-// Straight chain, except the "Make Payment Link?" check: yes goes through Razorpay, no skips it.
+// Straight chain, except the two checks: yes goes through Gemini's reply or Razorpay, no skips it.
 const link = (node: string) => [{ node, type: "main", index: 0 }];
-const chain = nodes.map((node) => node.name).filter((name) => name !== RAZORPAY_NODE);
+const chain = nodes.map((node) => node.name).filter((name) => name !== RAZORPAY_NODE && name !== REPLY_NODE);
 const connections: Record<string, { main: ReturnType<typeof link>[] }> = Object.fromEntries(
   chain.slice(0, -1).map((name, index) => [name, { main: [link(chain[index + 1])] }])
 );
+connections[REPLY_CHECK_NODE] = { main: [link(REPLY_NODE), link(PAY_CHECK_NODE)] };
+connections[REPLY_NODE] = { main: [link(PAY_CHECK_NODE)] };
 connections[PAY_CHECK_NODE] = { main: [link(RAZORPAY_NODE), link(PREPARE_NODE)] };
 connections[RAZORPAY_NODE] = { main: [link(PREPARE_NODE)] };
 
 const workflow = {
-  name: "Warrio v2.4 Invoice (Gemini)",
+  name: "Warrio v2.5 Invoice (Gemini)",
   nodes: nodes.map((node, index) => ({ id: `warrio-node-${index + 1}`, ...node })),
   connections,
   settings: { executionOrder: "v1" },
