@@ -26,14 +26,14 @@ same rules and prices as text for the n8n "Warrio Instructions" step.
 
 ## n8n workflow
 
-`scripts/n8n/build-workflow.ts` builds "Warrio v2.3 Invoice (Gemini)", an n8n
+`scripts/n8n/build-workflow.ts` builds "Warrio v2.4 Invoice (Gemini)", an n8n
 workflow with the same prices and rules: form → Gemini reads the invoice →
 plan from the price list → Gemini writes the reply → Razorpay payment link
 for the exact plan price (falls back to a WhatsApp button) → row in the
 "Warrio Leads" data table → reply page. Regenerate it after a price change:
 
 ```bash
-JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.3-Gemini.json
+JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.4-Gemini.json
 ```
 
 ## Settings

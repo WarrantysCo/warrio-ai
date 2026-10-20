@@ -7,11 +7,18 @@ const binaryKey = Object.keys(input.binary || {})[0];
 if (!binaryKey) throw new Error('No invoice file was uploaded.');
 const file = input.binary[binaryKey];
 const buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);
-let mimeType = file.mimeType || '';
 const fileName = file.fileName || 'invoice';
-if (!mimeType || mimeType === 'application/octet-stream') {
-  mimeType = /\.pdf$/i.test(fileName) ? 'application/pdf' : 'image/jpeg';
-}
+
+// Gemini only accepts exact types such as image/jpeg, so trust the file's first bytes over its label
+// (browsers and phones sometimes send "image/jpg", "image/pjpeg" or nothing at all).
+const starts = (...bytes) => bytes.every((b, i) => buffer[i] === b);
+let mimeType;
+if (starts(0x25, 0x50, 0x44, 0x46)) mimeType = 'application/pdf';
+else if (starts(0xff, 0xd8, 0xff)) mimeType = 'image/jpeg';
+else if (starts(0x89, 0x50, 0x4e, 0x47)) mimeType = 'image/png';
+else if (starts(0x52, 0x49, 0x46, 0x46) && buffer.slice(8, 12).toString() === 'WEBP') mimeType = 'image/webp';
+else if (buffer.slice(4, 12).toString().startsWith('ftyphei') || buffer.slice(4, 12).toString().startsWith('ftypmif1')) mimeType = 'image/heic';
+else mimeType = /\.pdf$/i.test(fileName) ? 'application/pdf' : 'image/jpeg';
 
 const categories = [...settings.PRICE_LIST.map((c) => c.name), 'Other'];
 const today = new Date().toISOString().slice(0, 10);

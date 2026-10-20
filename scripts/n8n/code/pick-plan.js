@@ -7,7 +7,12 @@ let read = null;
 let aiError = '';
 try {
   if (response.error) throw new Error(typeof response.error === 'string' ? response.error : (response.error.message || JSON.stringify(response.error)));
-  read = JSON.parse(response.candidates[0].content.parts[0].text);
+  const candidate = response.candidates?.[0];
+  if (!candidate?.content?.parts) throw new Error('no answer (' + (candidate?.finishReason || response.promptFeedback?.blockReason || 'empty response') + ')');
+  // Skip any "thinking" parts and code fences around the JSON.
+  const answer = candidate.content.parts.filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
+    .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  read = JSON.parse(answer);
 } catch (error) {
   aiError = 'Gemini could not read the invoice: ' + String(error.message || error).slice(0, 300);
 }

@@ -2,7 +2,7 @@
 // price list and rules the website uses.
 //
 // Run from the repo root:
-//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.3-Gemini.json
+//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.4-Gemini.json
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -129,13 +129,18 @@ const geminiHttpNode = (name: string, urlExpr: string, bodyExpr: string, positio
     sendBody: true,
     specifyBody: "json",
     jsonBody: `={{ JSON.stringify(${bodyExpr}) }}`,
-    options: { timeout: 120000 },
+    // A stuck call gives up after 45 seconds instead of keeping the customer waiting.
+    options: { timeout: 45000 },
   },
   name,
   type: "n8n-nodes-base.httpRequest",
   typeVersion: 4.2,
   position,
   onError: "continueRegularOutput",
+  // Google's free tier often answers "busy" (429 or 503); try again before giving up.
+  retryOnFail: true,
+  maxTries: 2,
+  waitBetweenTries: 3000,
   credentials: { googlePalmApi: { id: "", name: "Google Gemini(PaLM) Api account" } },
 });
 
@@ -293,7 +298,7 @@ connections[PAY_CHECK_NODE] = { main: [link(RAZORPAY_NODE), link(PREPARE_NODE)] 
 connections[RAZORPAY_NODE] = { main: [link(PREPARE_NODE)] };
 
 const workflow = {
-  name: "Warrio v2.3 Invoice (Gemini)",
+  name: "Warrio v2.4 Invoice (Gemini)",
   nodes: nodes.map((node, index) => ({ id: `warrio-node-${index + 1}`, ...node })),
   connections,
   settings: { executionOrder: "v1" },
