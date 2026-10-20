@@ -157,11 +157,13 @@ ${button(`tel:+${settings.WHATSAPP_NUMBER}`, `📞 Call us: ${settings.PHONE_DIS
 // Razorpay wants the amount in paise and the mobile with its country code.
 const mobileDigits = String(customer.mobile || '').replace(/\D/g, '');
 const contact = mobileDigits.length === 10 ? '+91' + mobileDigits : (mobileDigits.length === 12 && mobileDigits.startsWith('91') ? '+' + mobileDigits : '');
+// TEST_AMOUNT_RS in the Settings box charges that amount instead, only for testing payments.
+const testAmount = Number(settings.TEST_AMOUNT_RS) > 0 ? Math.round(Number(settings.TEST_AMOUNT_RS)) : 0;
 const razorpayBody = recommended ? {
-  amount: recommended.price * 100,
+  amount: (testAmount || recommended.price) * 100,
   currency: 'INR',
   accept_partial: false,
-  description: `Warrantys.co ${recommended.name} for your ${device}`.slice(0, 2048),
+  description: `${testAmount ? 'TEST PAYMENT - ' : ''}Warrantys.co ${recommended.name} for your ${device}`.slice(0, 2048),
   customer: Object.fromEntries(Object.entries({ name: customer.name, contact, email: customer.email }).filter(([, v]) => v)),
   notify: { sms: false, email: false },
   reminder_enable: false,

@@ -2,7 +2,7 @@
 // price list and rules the website uses.
 //
 // Run from the repo root:
-//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.5-Gemini.json
+//   JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Workflow-v2.6-Gemini.json
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -91,6 +91,10 @@ const PHONE_DISPLAY = "88751 92691";
 // false: the plan button opens WhatsApp instead.
 const USE_RAZORPAY = true;
 
+// ONLY FOR TESTING: put 1 here to make every payment link Rs 1.
+// Put it back to 0 straight after your test, or real customers will be charged Rs 1!
+const TEST_AMOUNT_RS = 0;
+
 const COVERED = ${JSON.stringify(salesRules.coverage.join(", "))};
 
 // Why customers should buy. Only true promises from the Warrantys.co website FAQ and refund policy.
@@ -110,7 +114,7 @@ const PRICE_LIST = ${priceListCode()};
 
 // Carry the uploaded invoice forward from the form.
 return [{
-  json: { MODEL, AI_WRITES_REPLY, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, USE_RAZORPAY, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
+  json: { MODEL, AI_WRITES_REPLY, PURCHASE_WINDOW_DAYS, RECOMMEND, COUNTRY, WHATSAPP_NUMBER, PHONE_DISPLAY, USE_RAZORPAY, TEST_AMOUNT_RS, COVERED, NOT_COVERED, WHY_WARRIO, PRICE_LIST },
   binary: $('${FORM_NODE}').first().binary,
 }];
 `;
@@ -328,7 +332,7 @@ connections[PAY_CHECK_NODE] = { main: [link(RAZORPAY_NODE), link(PREPARE_NODE)] 
 connections[RAZORPAY_NODE] = { main: [link(PREPARE_NODE)] };
 
 const workflow = {
-  name: "Warrio v2.5 Invoice (Gemini)",
+  name: "Warrio v2.6 Invoice (Gemini)",
   nodes: nodes.map((node, index) => ({ id: `warrio-node-${index + 1}`, ...node })),
   connections,
   settings: { executionOrder: "v1" },
