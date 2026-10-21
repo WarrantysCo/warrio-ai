@@ -23,6 +23,7 @@ const columns = [
   {
     title: "Policies",
     links: [
+      { href: "/terms", label: "Terms & Conditions" },
       { href: "/refund-policy", label: "Refund & Cancellation" },
       { href: "/shipping-policy", label: "Delivery Policy" },
       { href: "/privacy-policy", label: "Privacy Policy" },
