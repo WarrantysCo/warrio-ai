@@ -19,11 +19,11 @@ export default function TermsPage() {
         <>
           These terms apply to every Warrantys.co Extended Warranty Plan. See
           also our{" "}
-          <Link href="/refund-policy" className="font-semibold text-blue-400 hover:text-blue-300">
+          <Link href="/refund-policy" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             Refund & Cancellation
           </Link>{" "}
           and{" "}
-          <Link href="/privacy-policy" className="font-semibold text-blue-400 hover:text-blue-300">
+          <Link href="/privacy-policy" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             Privacy Policy
           </Link>
           .

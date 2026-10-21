@@ -33,22 +33,22 @@ const columns = [
 
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 bg-slate-950">
+    <footer className="border-t border-slate-200 bg-slate-50">
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 md:grid-cols-4">
         <div>
           <BrandLogo />
-          <p className="mt-4 text-sm leading-6 text-slate-400">
+          <p className="mt-4 text-sm leading-6 text-slate-600">
             Extended warranty plans for your phones, TVs, laptops and home
             appliances. 100% cashless repairs.
           </p>
           <address className="mt-4 text-xs not-italic leading-5 text-slate-500">
             {contact.address.join(", ")}
           </address>
-          <div className="mt-4 space-y-1 text-sm text-slate-300">
-            <a href={`mailto:${contact.email}`} className="block hover:text-white">
+          <div className="mt-4 space-y-1 text-sm text-slate-700">
+            <a href={`mailto:${contact.email}`} className="block hover:text-brand-blue">
               {contact.email}
             </a>
-            <a href={contact.phoneHref} className="block hover:text-white">
+            <a href={contact.phoneHref} className="block hover:text-brand-blue">
               Call / WhatsApp: {contact.phone}
             </a>
           </div>
@@ -56,11 +56,11 @@ export default function SiteFooter() {
 
         {columns.map((column) => (
           <div key={column.title}>
-            <div className="text-sm font-semibold text-white">{column.title}</div>
+            <div className="text-sm font-semibold text-slate-900">{column.title}</div>
             <ul className="mt-4 space-y-2 text-sm">
               {column.links.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-slate-400 hover:text-white">
+                  <Link href={link.href} className="text-slate-600 hover:text-brand-blue">
                     {link.label}
                   </Link>
                 </li>
@@ -70,7 +70,7 @@ export default function SiteFooter() {
         ))}
       </div>
 
-      <div className="border-t border-white/10 py-6">
+      <div className="border-t border-slate-200 py-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
           <div>
             © {new Date().getFullYear()} {contact.brand} · {contact.company}

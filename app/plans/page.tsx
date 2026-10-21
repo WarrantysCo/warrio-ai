@@ -29,7 +29,7 @@ export default function PlansPage() {
         <>
           Pick your device, then find the price you paid for it. That row shows
           what a 1, 2 or 3-year extended warranty costs. Not sure?{" "}
-          <Link href="/#ask" className="font-semibold text-blue-400 hover:text-blue-300">
+          <Link href="/#ask" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             Upload your bill to Warrio
           </Link>{" "}
           and it picks the right plan for you.
@@ -37,18 +37,18 @@ export default function PlansPage() {
       }
     >
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/[0.06] p-6">
-          <div className="font-bold text-emerald-300">What is covered</div>
-          <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
+        <div className="rounded-3xl border border-emerald-400/20 bg-emerald-50 p-6">
+          <div className="font-bold text-emerald-700">What is covered</div>
+          <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
             {salesRules.coverage.map((item) => (
               <li key={item}>✓ {item}</li>
             ))}
             <li>✓ Genuine spare parts and repair visits, 100% cashless</li>
           </ul>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6">
           <div className="font-bold">Not covered</div>
-          <ul className="mt-3 space-y-1.5 text-sm text-slate-400">
+          <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
             {salesRules.exclusions.map((item) => (
               <li key={item}>✕ {item}</li>
             ))}
@@ -56,8 +56,8 @@ export default function PlansPage() {
         </div>
       </div>
 
-      <p className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-4 text-sm leading-6 text-slate-300">
-        <span className="font-semibold text-blue-300">Who can buy: </span>
+      <p className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+        <span className="font-semibold text-brand-blue">Who can buy: </span>
         {salesRules.eligibility}
       </p>
 
@@ -65,13 +65,13 @@ export default function PlansPage() {
         {priceCategories.map((category) => (
           <details
             key={category.id}
-            className="group rounded-2xl border border-white/10 bg-white/[0.03] open:bg-white/[0.05]"
+            className="group rounded-2xl border border-slate-200 bg-white open:bg-slate-50"
           >
             <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4">
               <span className="text-3xl">{category.icon}</span>
               <span className="flex-1">
                 <span className="block font-bold">{category.name}</span>
-                <span className="text-sm text-slate-400">
+                <span className="text-sm text-slate-600">
                   From {rupees(lowestPrice(category))}
                 </span>
               </span>
@@ -82,8 +82,8 @@ export default function PlansPage() {
 
             <div className="overflow-x-auto px-5 pb-5">
               <table className="w-full min-w-[420px] text-left text-sm">
-                <thead className="text-slate-400">
-                  <tr className="border-b border-white/10">
+                <thead className="text-slate-600">
+                  <tr className="border-b border-slate-200">
                     <th className="py-2 pr-4 font-medium">Price you paid</th>
                     <th className="py-2 pr-4 font-medium">1 year</th>
                     <th className="py-2 pr-4 font-medium">2 years</th>
@@ -92,8 +92,8 @@ export default function PlansPage() {
                 </thead>
                 <tbody>
                   {category.bands.map(([minInr, maxInr, ...prices], index) => (
-                    <tr key={`${minInr}-${maxInr}`} className="border-b border-white/5">
-                      <td className="py-2 pr-4 text-slate-300">
+                    <tr key={`${minInr}-${maxInr}`} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 text-slate-700">
                         {bandLabel(minInr, maxInr, index === 0)}
                       </td>
                       {prices.map((price, tenure) => (
@@ -101,7 +101,7 @@ export default function PlansPage() {
                           key={tenure}
                           className={
                             price === null
-                              ? "py-2 pr-4 text-slate-600"
+                              ? "py-2 pr-4 text-slate-400"
                               : "py-2 pr-4 font-semibold"
                           }
                         >
@@ -117,17 +117,17 @@ export default function PlansPage() {
         ))}
       </div>
 
-      <div className="mt-10 flex flex-col items-start justify-between gap-6 rounded-3xl border border-blue-500/20 bg-blue-600/10 p-8 md:flex-row md:items-center">
+      <div className="mt-10 flex flex-col items-start justify-between gap-6 rounded-3xl border border-blue-500/20 bg-blue-50 p-8 md:flex-row md:items-center">
         <div>
           <h2 className="text-2xl font-bold">Let Warrio pick for you</h2>
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-slate-600">
             Upload a photo or PDF of your bill. Warrio reads it and shows your
             plan and price in a few seconds.
           </p>
         </div>
         <Link
           href="/#ask"
-          className="shrink-0 rounded-2xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
+          className="shrink-0 rounded-2xl bg-brand-blue px-7 py-4 font-bold hover:bg-brand-blue-dark text-white"
         >
           Upload my bill →
         </Link>

@@ -18,11 +18,11 @@ export default function FaqPage() {
       intro={
         <>
           Can&apos;t find your answer?{" "}
-          <Link href="/#ask" className="font-semibold text-blue-400 hover:text-blue-300">
+          <Link href="/#ask" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             Ask Warrio
           </Link>{" "}
           or{" "}
-          <Link href="/contact" className="font-semibold text-blue-400 hover:text-blue-300">
+          <Link href="/contact" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             contact us
           </Link>
           .

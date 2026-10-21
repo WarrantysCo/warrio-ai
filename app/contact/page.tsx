@@ -28,7 +28,7 @@ export default function ContactPage() {
       intro={
         <>
           For the quickest answer about plans and prices,{" "}
-          <Link href="/#ask" className="font-semibold text-blue-400 hover:text-blue-300">
+          <Link href="/#ask" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             ask Warrio
           </Link>
           . For anything else, reach our team below.
@@ -43,22 +43,22 @@ export default function ContactPage() {
             {...(card.external
               ? { target: "_blank", rel: "noopener noreferrer" }
               : {})}
-            className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 transition hover:border-blue-500/40 hover:bg-blue-500/[0.08]"
+            className="rounded-3xl border border-slate-200 bg-white p-6 transition hover:border-blue-500/40 hover:bg-blue-50"
           >
-            <div className="text-sm text-slate-400">{card.title}</div>
+            <div className="text-sm text-slate-600">{card.title}</div>
             <div className="mt-2 break-words text-lg font-bold">{card.value}</div>
           </a>
         ))}
       </div>
 
-      <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
-        <div className="font-bold text-white">{contact.company}</div>
-        <address className="mt-2 text-sm not-italic leading-6 text-slate-400">
+      <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 text-slate-700">
+        <div className="font-bold text-slate-900">{contact.company}</div>
+        <address className="mt-2 text-sm not-italic leading-6 text-slate-600">
           {contact.address.map((line) => (
             <div key={line}>{line}</div>
           ))}
         </address>
-        <div className="mt-3 text-sm text-slate-400">
+        <div className="mt-3 text-sm text-slate-600">
           {contact.brand} is a brand of {contact.company}.
         </div>
       </div>

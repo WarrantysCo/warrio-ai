@@ -338,27 +338,27 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-white text-slate-900">
       <SiteHeader onAskWarrio={() => openWarrio()} />
 
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.28),transparent_45%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,139,232,0.14),transparent_45%)]" />
 
         <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
           <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-sm text-blue-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-4 py-2 text-sm font-semibold text-brand-green-dark">
+              <span className="h-2 w-2 rounded-full bg-brand-green-dark" />
               AI-powered warranty assistance
             </div>
 
             <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
               Protect what you own.
-              <span className="block text-blue-400">
+              <span className="block text-brand-blue">
                 Let Warrio handle the rest.
               </span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-700">
               Get help understanding your warranty, protect eligible products,
               register your purchase and get claim assistance - all from one
               intelligent warranty platform.
@@ -368,7 +368,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio("I want to protect my product")}
-                className="rounded-2xl bg-blue-600 px-7 py-4 font-bold shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
+                className="rounded-2xl bg-brand-blue px-7 py-4 font-bold shadow-xl shadow-brand-blue/20 transition hover:-translate-y-0.5 hover:bg-brand-blue-dark text-white"
               >
                 🛡️ Protect My Product
               </button>
@@ -376,13 +376,13 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio()}
-                className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4 font-bold backdrop-blur transition hover:bg-white/10"
+                className="rounded-2xl border border-slate-300 bg-slate-50 px-7 py-4 font-bold backdrop-blur transition hover:bg-slate-100"
               >
                 🤖 Ask Warrio
               </button>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-400">
+            <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-600">
               <span>✓ Warranty assistance</span>
               <span>✓ Product registration</span>
               <span>✓ Claim support</span>
@@ -390,23 +390,23 @@ export default function Home() {
           </div>
 
           <div className="mx-auto w-full max-w-lg">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-blue-950/40 backdrop-blur-xl">
-              <div className="flex items-center gap-4 border-b border-white/10 pb-5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-3xl">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-200 backdrop-blur-xl">
+              <div className="flex items-center gap-4 border-b border-slate-200 pb-5">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue text-3xl text-white">
                   🛡️
                 </div>
 
                 <div>
                   <div className="font-bold">Warrio AI</div>
-                  <div className="flex items-center gap-2 text-sm text-emerald-400">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <div className="flex items-center gap-2 text-sm text-emerald-600">
+                    <span className="h-2 w-2 rounded-full bg-brand-green" />
                     Ready to help
                   </div>
                 </div>
               </div>
 
               <div className="py-6">
-                <div className="max-w-sm rounded-2xl rounded-tl-sm bg-slate-800 p-4 text-sm leading-6 text-slate-200">
+                <div className="max-w-sm rounded-2xl rounded-tl-sm bg-slate-100 p-4 text-sm leading-6 text-slate-800">
                   Hi! I&apos;m Warrio. 👋
                   <br />
                   <br />
@@ -418,7 +418,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio()}
-                className="w-full rounded-2xl bg-blue-600 py-4 font-bold transition hover:bg-blue-500"
+                className="w-full rounded-2xl bg-brand-blue py-4 font-bold transition hover:bg-brand-blue-dark text-white"
               >
                 Start Conversation →
               </button>
@@ -427,16 +427,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="protect" className="bg-slate-900/70 py-20">
+      <section id="protect" className="bg-slate-50 py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-10 max-w-2xl">
-            <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+            <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
               Protect your product
             </div>
             <h2 className="mt-3 text-3xl font-bold md:text-4xl">
               What do you want to protect?
             </h2>
-            <p className="mt-4 text-slate-400">
+            <p className="mt-4 text-slate-600">
               Choose a product and Warrio will guide you through the next step.
             </p>
           </div>
@@ -453,17 +453,17 @@ export default function Home() {
                   setLeadError("");
                   openWarrio(`I want to protect my ${product.name}`);
                 }}
-                className="group rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-left transition hover:-translate-y-1 hover:border-blue-500/40 hover:bg-blue-500/[0.08]"
+                className="group rounded-3xl border border-slate-200 bg-white p-6 text-left transition hover:-translate-y-1 hover:border-blue-500/40 hover:bg-blue-50"
               >
                 <div className="flex items-start justify-between">
                   <span className="text-4xl">{product.icon}</span>
-                  <span className="text-sm text-slate-500 transition group-hover:text-blue-400">
+                  <span className="text-sm text-slate-500 transition group-hover:text-brand-blue">
                     →
                   </span>
                 </div>
 
                 <div className="mt-6 text-lg font-bold">{product.name}</div>
-                <div className="mt-2 text-sm text-slate-400">
+                <div className="mt-2 text-sm text-slate-600">
                   {product.price}
                 </div>
               </button>
@@ -475,7 +475,7 @@ export default function Home() {
       <section id="how" className="py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
-            <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+            <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
               Simple
             </div>
             <h2 className="mt-3 text-3xl font-bold md:text-4xl">
@@ -503,13 +503,13 @@ export default function Home() {
             ].map((step) => (
               <div
                 key={step.number}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-7"
+                className="rounded-3xl border border-slate-200 bg-white p-7"
               >
-                <div className="text-sm font-bold text-blue-400">
+                <div className="text-sm font-bold text-brand-blue">
                   {step.number}
                 </div>
                 <h3 className="mt-5 text-xl font-bold">{step.title}</h3>
-                <p className="mt-3 leading-7 text-slate-400">{step.text}</p>
+                <p className="mt-3 leading-7 text-slate-600">{step.text}</p>
               </div>
             ))}
           </div>
@@ -517,11 +517,11 @@ export default function Home() {
       </section>
 
       <section id="support" className="px-6 pb-20">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-blue-500/20 bg-blue-600/10 p-8 md:p-12">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-blue-500/20 bg-blue-50 p-8 md:p-12">
           <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
             <div>
               <h2 className="text-3xl font-bold">Not sure what you need?</h2>
-              <p className="mt-3 max-w-xl text-slate-400">
+              <p className="mt-3 max-w-xl text-slate-600">
                 Ask Warrio. It&apos;s built to help you understand your
                 warranty options before you make a decision.
               </p>
@@ -530,7 +530,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio("I need help choosing the right warranty")}
-                className="shrink-0 rounded-2xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
+                className="shrink-0 rounded-2xl bg-brand-blue px-7 py-4 font-bold hover:bg-brand-blue-dark text-white"
               >
                 Talk to Warrio →
               </button>
@@ -541,8 +541,8 @@ export default function Home() {
       <SiteFooter />
 
       {isChatOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm md:items-center">
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm md:items-center">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-bold">🛡️ Warrio AI</div>
@@ -554,20 +554,20 @@ export default function Home() {
                   setChatOpen(false);
                   setAskLinkDismissed(true);
                 }}
-                className="rounded-full bg-white/10 px-3 py-2 text-slate-300 hover:bg-white/15"
+                className="rounded-full bg-slate-100 px-3 py-2 text-slate-700 hover:bg-slate-200"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mt-6 rounded-2xl bg-slate-800 p-4 text-sm leading-6 text-slate-300">
+            <div className="mt-6 rounded-2xl bg-slate-100 p-4 text-sm leading-6 text-slate-700">
               {selectedProduct
                 ? `Great - let's look at protection options for your ${selectedProduct}.`
                 : "Tell me what you need help with and I'll guide you."}
             </div>
 
             {journeyStep === "success" ? (
-              <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-5 text-sm leading-6 text-emerald-100">
+              <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-5 text-sm leading-6 text-emerald-900">
                 <div className="text-base font-bold">
                   Your warranty request has been created successfully.
                 </div>
@@ -576,13 +576,13 @@ export default function Home() {
                 <div>
                   Price: ₹{selectedPlan?.price_inr.toLocaleString("en-IN")}
                 </div>
-                <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-amber-100">
+                <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-amber-900">
                   Payment setup in progress
                 </div>
               </div>
             ) : (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <div className="text-sm font-semibold text-blue-300">
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-brand-blue">
                   {journeyStep === "chat"
                     ? "Start with your purchase invoice"
                     : journeyStep === "recommendation"
@@ -598,14 +598,14 @@ export default function Home() {
 
                 {journeyStep === "chat" && !invoiceAnalysis && (
                   <>
-                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                    <p className="mt-3 text-sm leading-6 text-slate-700">
                       Upload your purchase invoice and Warrio will check the product,
                       purchase date and available protection options for you.
                     </p>
                     <button
                       type="button"
                       onClick={() => document.getElementById("invoice-upload")?.click()}
-                      className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500"
+                      className="mt-4 w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white"
                     >
                       Upload purchase invoice
                     </button>
@@ -614,9 +614,9 @@ export default function Home() {
 
                 {invoiceAnalysis && journeyStep === "recommendation" && selectedPlan && (
                   <>
-                    <div className="mt-3 rounded-xl bg-slate-950/60 p-4 text-sm leading-6 text-slate-200">
+                    <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-800">
                       <div className="whitespace-pre-line">{answer}</div>
-                      <div className="mt-3 font-semibold text-blue-200">
+                      <div className="mt-3 font-semibold text-brand-blue">
                         Recommended: {selectedPlan.plan_name} · ₹
                         {selectedPlan.price_inr.toLocaleString("en-IN")}
                       </div>
@@ -624,14 +624,14 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={continueToDetails}
-                      className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500"
+                      className="mt-4 w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white"
                     >
                       Generate Secure Payment Link
                     </button>
                     <button
                       type="button"
                       onClick={() => setJourneyStep("options")}
-                      className="mt-2 w-full rounded-xl border border-white/10 py-3 text-sm text-slate-300 hover:bg-white/5"
+                      className="mt-2 w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50"
                     >
                       View Other Plans
                     </button>
@@ -640,7 +640,7 @@ export default function Home() {
 
                 {invoiceAnalysis && journeyStep === "options" && (
                   <>
-                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                    <p className="mt-3 text-sm leading-6 text-slate-700">
                       These are the other verified {productName} options. Coverage does not
                       change unless the verified plan data says otherwise.
                     </p>
@@ -655,7 +655,7 @@ export default function Home() {
                               setSelectedPlanId(plan.id);
                               setJourneyStep("details");
                             }}
-                            className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-3 py-3 text-left hover:bg-white/5"
+                            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left hover:bg-slate-50"
                           >
                             <span>{plan.label} · shorter commitment / lower upfront option</span>
                             <span className="font-semibold">₹{plan.price_inr.toLocaleString("en-IN")}</span>
@@ -666,7 +666,7 @@ export default function Home() {
                 )}
 
                 {invoiceAnalysis && journeyStep === "eligibility" && (
-                  <div className="mt-3 whitespace-pre-line rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                  <div className="mt-3 whitespace-pre-line rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-900">
                     {invoiceAnalysis.reply}
                   </div>
                 )}
@@ -674,36 +674,36 @@ export default function Home() {
                 {journeyStep === "details" && (
                   <div className="mt-4 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Email" type="email" placeholder="Email" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500 sm:col-span-2" />
-                      <input aria-label="Brand" placeholder="Brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Serial number" placeholder="Serial number" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm text-slate-300 outline-none focus:border-blue-500" />
+                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Email" type="email" placeholder="Email" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
+                      <input aria-label="Brand" placeholder="Brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Serial number" placeholder="Serial number" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-blue-500" />
                     </div>
 
-                    <div className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-3 text-sm text-slate-300">
-                      <button type="button" onClick={() => document.getElementById("invoice-upload")?.click()} className="font-semibold text-blue-300 hover:text-blue-200">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                      <button type="button" onClick={() => document.getElementById("invoice-upload")?.click()} className="font-semibold text-brand-blue hover:text-brand-blue-dark">
                         {invoiceFile ? "Replace invoice" : "Upload invoice"}
                       </button>
                       <span className="ml-2">{invoiceFile ? invoiceFile.name : "(optional for this V1)"}</span>
                     </div>
 
-                    <label className="flex gap-3 text-sm leading-6 text-slate-300">
+                    <label className="flex gap-3 text-sm leading-6 text-slate-700">
                       <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
                       <span>I want to proceed with the selected {productName} warranty plan.</span>
                     </label>
 
-                    <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500">
+                    <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white">
                       Review request
                     </button>
                   </div>
                 )}
 
                 {journeyStep === "summary" && selectedPlan && (
-                  <div className="mt-4 space-y-2 text-sm text-slate-300">
-                    <div className="rounded-xl bg-slate-950/60 p-4 leading-7">
+                  <div className="mt-4 space-y-2 text-sm text-slate-700">
+                    <div className="rounded-xl bg-slate-50 p-4 leading-7">
                       <div>Customer: {customerDetails.fullName}</div>
                       <div>Product: {selectedPlan.category_name}</div>
                       <div>Brand/model: {customerDetails.brand} / {customerDetails.model}</div>
@@ -713,18 +713,18 @@ export default function Home() {
                       <div>Invoice: {invoiceFile ? invoiceFile.name : "Not uploaded"}</div>
                       <div>Mobile/email: {customerDetails.mobile} / {customerDetails.email}</div>
                     </div>
-                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-red-100">{leadError}</div>}
-                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
+                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-red-800">{leadError}</div>}
+                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60 text-white">
                       {isSubmittingLead ? "Creating request..." : "Proceed to Purchase"}
                     </button>
-                    <button type="button" onClick={() => setJourneyStep("details")} className="w-full rounded-xl border border-white/10 py-3 text-sm text-slate-300 hover:bg-white/5">
+                    <button type="button" onClick={() => setJourneyStep("details")} className="w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50">
                       Edit details
                     </button>
                   </div>
                 )}
 
                 {formErrors.length > 0 && (
-                  <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm leading-6 text-red-100">
+                  <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm leading-6 text-red-800">
                     {formErrors.map((error) => <div key={error}>{error}</div>)}
                   </div>
                 )}
@@ -732,11 +732,11 @@ export default function Home() {
             )}
 
             {journeyStep === "chat" && isAnalyzingInvoice ? (
-              <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm leading-6 text-blue-100">
+              <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm leading-6 text-blue-900">
                 Warrio is reviewing your invoice...
               </div>
             ) : journeyStep === "chat" && answer ? (
-              <div className="mt-4 max-h-56 overflow-y-auto rounded-2xl bg-slate-800 p-4 text-sm leading-6 text-slate-200 whitespace-pre-wrap select-text">
+              <div className="mt-4 max-h-56 overflow-y-auto rounded-2xl bg-slate-100 p-4 text-sm leading-6 text-slate-800 whitespace-pre-wrap select-text">
                 {answer}
               </div>
             ) : null}
@@ -778,7 +778,7 @@ export default function Home() {
 
                     setQuestion(item);
                   }}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-300 hover:bg-white/10"
+                  className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700 hover:bg-slate-100"
                 >
                   {item}
                 </button>
@@ -798,11 +798,11 @@ export default function Home() {
               />
 
               {invoiceFile && (
-                <div className="mb-2 w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                <div className="mb-2 w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-brand-blue">
                   📎 Invoice selected:{" "}
                   <span className="font-semibold">{invoiceFile.name}</span>
                   {isAnalyzingInvoice && (
-                    <div className="mt-1 text-xs text-blue-100/80">
+                    <div className="mt-1 text-xs text-blue-800">
                       Reviewing this invoice now.
                     </div>
                   )}
@@ -820,20 +820,20 @@ export default function Home() {
                 }}
                 placeholder="Ask Warrio anything..."
                 rows={1}
-                className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500"
+                className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500"
               />
 
               <button
                 type="button"
                 onClick={submitQuestion}
                 disabled={isAnalyzingInvoice && Boolean(invoiceFile)}
-                className="rounded-2xl bg-blue-600 px-5 font-bold hover:bg-blue-500"
+                className="rounded-2xl bg-brand-blue px-5 font-bold hover:bg-brand-blue-dark text-white"
               >
                 {isAnalyzingInvoice && invoiceFile ? "..." : "→"}
               </button>
             </div>
 
-            <p className="mt-4 text-center text-xs text-slate-600">
+            <p className="mt-4 text-center text-xs text-slate-400">
               Warrio will use verified warranty information when connected to
               the production system.
             </p>

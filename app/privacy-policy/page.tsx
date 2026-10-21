@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 export default function PrivacyPolicyPage() {
   return (
     <PageShell eyebrow="Policy" title="Privacy Policy">
-      <div className="space-y-4 text-base leading-7 text-slate-300">
+      <div className="space-y-4 text-base leading-7 text-slate-700">
         {privacyPolicy.map((section, sectionIndex) => (
           <section key={section.heading ?? sectionIndex} className="space-y-4">
             {section.heading && (
-              <h2 className="pt-4 text-xl font-bold text-white">{section.heading}</h2>
+              <h2 className="pt-4 text-xl font-bold text-slate-900">{section.heading}</h2>
             )}
             {section.body.map((part, index) =>
               Array.isArray(part) ? (

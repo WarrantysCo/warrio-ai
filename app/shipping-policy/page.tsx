@@ -15,14 +15,14 @@ const deliverySentence = deliveryText.split("\n").slice(1).join(" ").trim().repl
 export default function ShippingPolicyPage() {
   return (
     <PageShell eyebrow="Policy" title="Delivery Policy">
-      <div className="space-y-4 text-base leading-7 text-slate-300">
+      <div className="space-y-4 text-base leading-7 text-slate-700">
         <p>{deliverySentence}</p>
         <p>
           Plans are digital, so nothing is shipped to your home.
         </p>
         <p>
           Didn&apos;t get your certificate? Email{" "}
-          <a href={`mailto:${contact.email}`} className="text-blue-400 hover:text-blue-300">
+          <a href={`mailto:${contact.email}`} className="text-brand-blue hover:text-brand-blue-dark">
             {contact.email}
           </a>{" "}
           or call / WhatsApp {contact.phone}.

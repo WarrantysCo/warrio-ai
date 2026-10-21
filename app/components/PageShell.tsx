@@ -16,20 +16,20 @@ export default function PageShell({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-white text-slate-900">
       <SiteHeader />
 
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.22),transparent_50%)]" />
+      <section className="relative overflow-hidden border-b border-slate-200">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,139,232,0.12),transparent_50%)]" />
         <div className="relative mx-auto max-w-5xl px-6 py-14">
-          <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+          <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
             {eyebrow}
           </div>
           <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">
             {title}
           </h1>
           {intro && (
-            <div className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">
+            <div className="mt-4 max-w-2xl text-lg leading-8 text-slate-700">
               {intro}
             </div>
           )}

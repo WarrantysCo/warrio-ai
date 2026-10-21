@@ -41,19 +41,19 @@ export default function ClaimsPage() {
           href={contact.whatsappHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-2xl bg-emerald-600 px-5 py-4 text-center font-bold hover:bg-emerald-500"
+          className="rounded-2xl bg-emerald-600 px-5 py-4 text-center font-bold hover:bg-emerald-500 text-white"
         >
           WhatsApp us
         </a>
         <a
           href={contact.phoneHref}
-          className="rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-center font-bold hover:bg-white/10"
+          className="rounded-2xl border border-slate-300 bg-slate-50 px-5 py-4 text-center font-bold hover:bg-slate-100"
         >
           Call {contact.phone}
         </a>
         <a
           href={`mailto:${contact.email}?subject=Service%20request`}
-          className="rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-center font-bold hover:bg-white/10"
+          className="rounded-2xl border border-slate-300 bg-slate-50 px-5 py-4 text-center font-bold hover:bg-slate-100"
         >
           Email us
         </a>
@@ -63,14 +63,14 @@ export default function ClaimsPage() {
         {steps.map((step, index) => (
           <li
             key={step.title}
-            className="flex gap-5 rounded-3xl border border-white/10 bg-white/[0.04] p-6"
+            className="flex gap-5 rounded-3xl border border-slate-200 bg-white p-6"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-blue font-bold text-white">
               {index + 1}
             </span>
             <div>
               <h2 className="text-lg font-bold">{step.title}</h2>
-              <p className="mt-2 leading-7 text-slate-400">{step.text}</p>
+              <p className="mt-2 leading-7 text-slate-600">{step.text}</p>
             </div>
           </li>
         ))}
