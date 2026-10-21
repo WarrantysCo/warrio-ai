@@ -1,6 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
+
+import SiteFooter from "./components/SiteFooter";
+import SiteHeader from "./components/SiteHeader";
 
 import { priceCategories } from "./data/priceList";
 import { getCategory, lowestPrice } from "./lib/agents/sales/pricing";
@@ -70,6 +73,13 @@ const products = [
   },
 ];
 
+// Other pages link to /#ask to open the chat straight away.
+const subscribeToHash = (onChange: () => void) => {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+};
+const isAskHash = () => window.location.hash === "#ask";
+
 const quickQuestions = [
   "📎 Upload Invoice to Get Best Plan Options",
   "🔍 Check What's Covered",
@@ -82,6 +92,9 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const askedByLink = useSyncExternalStore(subscribeToHash, isAskHash, () => false);
+  const [askLinkDismissed, setAskLinkDismissed] = useState(false);
+  const isChatOpen = chatOpen || (askedByLink && !askLinkDismissed);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [answer, setAnswer] = useState("");
   const [isAnalyzingInvoice, setIsAnalyzingInvoice] = useState(false);
@@ -213,6 +226,7 @@ export default function Home() {
     setChatOpen(true);
   };
 
+
   const submitQuestion = async () => {
     const trimmedQuestion = question.trim();
     const hasInvoice = Boolean(invoiceFile);
@@ -325,41 +339,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-2xl shadow-lg shadow-blue-600/30">
-              🛡️
-            </div>
-            <div>
-              <div className="text-xl font-bold tracking-tight">Warrio AI</div>
-              <div className="text-xs text-slate-400">
-                Your Warranty Warrior
-              </div>
-            </div>
-          </div>
-
-          <nav className="hidden items-center gap-8 md:flex">
-            <a href="#protect" className="text-sm text-slate-300 hover:text-white">
-              Protect My Product
-            </a>
-            <a href="#how" className="text-sm text-slate-300 hover:text-white">
-              How It Works
-            </a>
-            <a href="#support" className="text-sm text-slate-300 hover:text-white">
-              Support
-            </a>
-          </nav>
-
-          <button
-            type="button"
-            onClick={() => openWarrio()}
-            className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
-          >
-            Ask Warrio
-          </button>
-        </div>
-      </header>
+      <SiteHeader onAskWarrio={() => openWarrio()} />
 
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.28),transparent_45%)]" />
@@ -558,16 +538,9 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-          <div>
-            © {new Date().getFullYear()} Warrantys.co · Deetya Warranty Pvt Ltd
-          </div>
-          <div>Powered by Warrio AI · Built by AA Labs</div>
-        </div>
-      </footer>
+      <SiteFooter />
 
-      {chatOpen && (
+      {isChatOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm md:items-center">
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
             <div className="flex items-center justify-between">
@@ -577,7 +550,10 @@ export default function Home() {
               </div>
 
               <button
-                onClick={() => setChatOpen(false)}
+                onClick={() => {
+                  setChatOpen(false);
+                  setAskLinkDismissed(true);
+                }}
                 className="rounded-full bg-white/10 px-3 py-2 text-slate-300 hover:bg-white/15"
               >
                 ✕
