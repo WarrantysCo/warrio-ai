@@ -53,7 +53,12 @@ export default function ContactPage() {
 
       <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
         <div className="font-bold text-white">{contact.company}</div>
-        <div className="mt-1 text-sm text-slate-400">
+        <address className="mt-2 text-sm not-italic leading-6 text-slate-400">
+          {contact.address.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </address>
+        <div className="mt-3 text-sm text-slate-400">
           {contact.brand} is a brand of {contact.company}.
         </div>
       </div>

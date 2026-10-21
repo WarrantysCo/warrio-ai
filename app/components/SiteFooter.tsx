@@ -39,6 +39,9 @@ export default function SiteFooter() {
             Extended warranty plans for your phones, TVs, laptops and home
             appliances. 100% cashless repairs.
           </p>
+          <address className="mt-4 text-xs not-italic leading-5 text-slate-500">
+            {contact.address.join(", ")}
+          </address>
           <div className="mt-4 space-y-1 text-sm text-slate-300">
             <a href={`mailto:${contact.email}`} className="block hover:text-white">
               {contact.email}
