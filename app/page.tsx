@@ -2,12 +2,9 @@
 
 import { useRef, useState } from "react";
 
-import { warrantyProducts } from "./data/products";
-
-const televisionProduct = warrantyProducts.find(
-  (product) => product.id === "television"
-)!;
-const televisionPlans = televisionProduct.plans;
+import { priceCategories } from "./data/priceList";
+import { getCategory, lowestPrice } from "./lib/agents/sales/pricing";
+import type { SalesAnalysis } from "./lib/agents/sales/types";
 
 type JourneyStep =
   | "chat"
@@ -17,28 +14,6 @@ type JourneyStep =
   | "details"
   | "summary"
   | "success";
-
-type InvoiceAnalysis = {
-  summary: {
-    seller: string | null;
-    invoiceNumber: string | null;
-    invoiceDateText: string | null;
-    invoiceDateNormalized: string | null;
-    product: string | null;
-    matchedProductCategory: string | null;
-    brand: string | null;
-    model: string | null;
-    serialNumber: string | null;
-    invoiceValue: string | null;
-    currency: string | null;
-    purchaseLocationCountry: string | null;
-    missingDetails: string[];
-  };
-  eligibilityStatus: "eligible" | "ineligible" | "cannot_confirm";
-  eligibilityMessage: string;
-  recommendedPlanId: string | null;
-  availablePlanIds: string[];
-};
 
 type CustomerDetails = {
   fullName: string;
@@ -62,17 +37,32 @@ const emptyCustomerDetails: CustomerDetails = {
   consent: false,
 };
 
+// Product cards shown on the home page; every other category in the price
+// list is still sold through "Other Product".
+const featuredProducts: { id: string; label: string }[] = [
+  { id: "mobile", label: "Mobile Phone" },
+  { id: "tv", label: "TV" },
+  { id: "laptop", label: "Laptop" },
+  { id: "ac", label: "Air Conditioner" },
+  { id: "refrigerator", label: "Refrigerator" },
+  { id: "washing-machine", label: "Washing Machine" },
+  { id: "water-purifier", label: "Water Purifier" },
+  { id: "small-appliance", label: "Small Appliances" },
+];
+
 const products = [
-  ...warrantyProducts.map((product) => ({
-    name: product.category,
-    icon: product.category === "Television" ? "📺" : "🛡️",
-    price:
-      product.plans.length > 0
-        ? `From ₹${Math.min(
-            ...product.plans.map((plan) => plan.price)
-          ).toLocaleString("en-IN")}`
-        : "Ask Warrio",
-  })),
+  ...featuredProducts.flatMap(({ id, label }) => {
+    const category = priceCategories.find((entry) => entry.id === id);
+    return category
+      ? [
+          {
+            name: label,
+            icon: category.icon,
+            price: `From ₹${lowestPrice(category).toLocaleString("en-IN")}`,
+          },
+        ]
+      : [];
+  }),
   {
     name: "Other Product",
     icon: "🛡️",
@@ -96,7 +86,7 @@ export default function Home() {
   const [answer, setAnswer] = useState("");
   const [isAnalyzingInvoice, setIsAnalyzingInvoice] = useState(false);
   const [invoiceAnalysis, setInvoiceAnalysis] =
-    useState<InvoiceAnalysis | null>(null);
+    useState<SalesAnalysis | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [journeyStep, setJourneyStep] = useState<JourneyStep>("chat");
   const [customerDetails, setCustomerDetails] =
@@ -107,9 +97,11 @@ export default function Home() {
   const [leadError, setLeadError] = useState("");
   const invoiceAnalysisRequestIdRef = useRef(0);
 
-  const selectedPlan = televisionPlans.find(
-    (plan) => plan.id === selectedPlanId
-  );
+  const planOptions = invoiceAnalysis?.plan_options ?? [];
+  const selectedPlan = planOptions.find((plan) => plan.id === selectedPlanId);
+  const productName =
+    getCategory(invoiceAnalysis?.invoice.product_category ?? "")?.name ??
+    "product";
 
   const updateCustomerDetail = <K extends keyof CustomerDetails>(
     field: K,
@@ -125,7 +117,7 @@ export default function Home() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const mobilePattern = /^[6-9]\d{9}$/;
 
-    if (!selectedPlan) errors.push("Please select one Television plan.");
+    if (!selectedPlan) errors.push("Please select one plan.");
     if (!customerDetails.fullName.trim()) {
       errors.push("Please enter your full name.");
     }
@@ -136,10 +128,10 @@ export default function Home() {
       errors.push("Please enter a valid email address.");
     }
     if (!customerDetails.brand.trim()) {
-      errors.push("Please enter the Television brand.");
+      errors.push("Please enter the product brand.");
     }
     if (!customerDetails.model.trim()) {
-      errors.push("Please enter the Television model.");
+      errors.push("Please enter the product model.");
     }
     if (!customerDetails.serialNumber.trim()) {
       errors.push("Please enter the product serial number.");
@@ -155,8 +147,8 @@ export default function Home() {
   };
 
   const continueToDetails = () => {
-    if (!selectedPlan || invoiceAnalysis?.eligibilityStatus !== "eligible") {
-      setFormErrors(["Please select one Television plan."]);
+    if (!selectedPlan || invoiceAnalysis?.eligibility_status !== "eligible") {
+      setFormErrors(["Please select one plan."]);
       return;
     }
 
@@ -185,16 +177,13 @@ export default function Home() {
       formData.append("fullName", customerDetails.fullName.trim());
       formData.append("mobile", customerDetails.mobile.trim());
       formData.append("email", customerDetails.email.trim());
-      formData.append("product", "Television");
       formData.append("brand", customerDetails.brand.trim());
       formData.append("model", customerDetails.model.trim());
       formData.append("serialNumber", customerDetails.serialNumber.trim());
       formData.append("purchaseDate", customerDetails.purchaseDate);
       formData.append("selectedPlanId", selectedPlan.id);
-      formData.append(
-        "eligibilityStatus",
-        invoiceAnalysis?.eligibilityStatus || ""
-      );
+      formData.append("priceInr", String(invoiceAnalysis?.invoice.price_inr ?? ""));
+      formData.append("analysis", JSON.stringify(invoiceAnalysis));
       formData.append("consent", String(customerDetails.consent));
 
       if (invoiceFile) formData.append("invoice", invoiceFile, invoiceFile.name);
@@ -271,6 +260,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             message: trimmedQuestion,
+            selectedProduct: selectedProduct || undefined,
           }),
         });
       }
@@ -300,22 +290,22 @@ export default function Home() {
       setAnswer(result.message);
 
       if (result.analysis) {
-        const analysis = result.analysis as InvoiceAnalysis;
-        const summary = analysis.summary;
+        const analysis = result.analysis as SalesAnalysis;
+        const invoice = analysis.invoice;
 
         setInvoiceAnalysis(analysis);
-        setSelectedProduct(summary.matchedProductCategory || "");
-        setSelectedPlanId(analysis.recommendedPlanId || "");
+        setSelectedProduct(getCategory(invoice.product_category)?.name || "");
+        setSelectedPlanId(analysis.recommended_plan_id || "");
         setCustomerDetails((current) => ({
           ...current,
-          brand: summary.brand || current.brand,
-          model: summary.model || current.model,
-          serialNumber: summary.serialNumber || current.serialNumber,
-          purchaseDate:
-            summary.invoiceDateNormalized || current.purchaseDate,
+          fullName: current.fullName || invoice.name_on_invoice || "",
+          brand: invoice.brand || current.brand,
+          model: invoice.model || current.model,
+          serialNumber: invoice.serial_or_imei || current.serialNumber,
+          purchaseDate: invoice.invoice_date || current.purchaseDate,
         }));
         setJourneyStep(
-          analysis.eligibilityStatus === "eligible"
+          analysis.eligibility_status === "eligible"
             ? "recommendation"
             : "eligibility"
         );
@@ -606,9 +596,9 @@ export default function Home() {
                   Your warranty request has been created successfully.
                 </div>
                 <div className="mt-3">Lead reference: {leadReference}</div>
-                <div>Selected plan: {selectedPlan?.tenure}</div>
+                <div>Selected plan: {selectedPlan?.plan_name}</div>
                 <div>
-                  Price: ₹{selectedPlan?.price.toLocaleString("en-IN")}
+                  Price: ₹{selectedPlan?.price_inr.toLocaleString("en-IN")}
                 </div>
                 <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-amber-100">
                   Payment setup in progress
@@ -649,10 +639,10 @@ export default function Home() {
                 {invoiceAnalysis && journeyStep === "recommendation" && selectedPlan && (
                   <>
                     <div className="mt-3 rounded-xl bg-slate-950/60 p-4 text-sm leading-6 text-slate-200">
-                      <div>{answer}</div>
+                      <div className="whitespace-pre-line">{answer}</div>
                       <div className="mt-3 font-semibold text-blue-200">
-                        Recommended: {selectedPlan.tenure} Extended Warranty Plan · ₹
-                        {selectedPlan.price.toLocaleString("en-IN")}
+                        Recommended: {selectedPlan.plan_name} · ₹
+                        {selectedPlan.price_inr.toLocaleString("en-IN")}
                       </div>
                     </div>
                     <button
@@ -675,12 +665,12 @@ export default function Home() {
                 {invoiceAnalysis && journeyStep === "options" && (
                   <>
                     <p className="mt-3 text-sm leading-6 text-slate-300">
-                      These are the other verified Television options. Coverage does not
+                      These are the other verified {productName} options. Coverage does not
                       change unless the verified plan data says otherwise.
                     </p>
                     <div className="mt-3 space-y-2">
-                      {televisionPlans
-                        .filter((plan) => plan.id !== invoiceAnalysis.recommendedPlanId)
+                      {planOptions
+                        .filter((plan) => plan.id !== invoiceAnalysis.recommended_plan_id)
                         .map((plan) => (
                           <button
                             type="button"
@@ -691,8 +681,8 @@ export default function Home() {
                             }}
                             className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-3 py-3 text-left hover:bg-white/5"
                           >
-                            <span>{plan.tenure} · shorter commitment / lower upfront option</span>
-                            <span className="font-semibold">₹{plan.price.toLocaleString("en-IN")}</span>
+                            <span>{plan.label} · shorter commitment / lower upfront option</span>
+                            <span className="font-semibold">₹{plan.price_inr.toLocaleString("en-IN")}</span>
                           </button>
                         ))}
                     </div>
@@ -700,11 +690,8 @@ export default function Home() {
                 )}
 
                 {invoiceAnalysis && journeyStep === "eligibility" && (
-                  <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
-                    {invoiceAnalysis.eligibilityMessage}
-                    {invoiceAnalysis.eligibilityStatus === "cannot_confirm" && (
-                      <div className="mt-2">Please provide the missing invoice information so Warrio can review eligibility.</div>
-                    )}
+                  <div className="mt-3 whitespace-pre-line rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                    {invoiceAnalysis.reply}
                   </div>
                 )}
 
@@ -714,7 +701,7 @@ export default function Home() {
                       <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
                       <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
                       <input aria-label="Email" type="email" placeholder="Email" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500 sm:col-span-2" />
-                      <input aria-label="Brand" placeholder="Television brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
+                      <input aria-label="Brand" placeholder="Brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
                       <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
                       <input aria-label="Serial number" placeholder="Serial number" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
                       <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm text-slate-300 outline-none focus:border-blue-500" />
@@ -729,7 +716,7 @@ export default function Home() {
 
                     <label className="flex gap-3 text-sm leading-6 text-slate-300">
                       <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
-                      <span>I want to proceed with the selected Television warranty plan.</span>
+                      <span>I want to proceed with the selected {productName} warranty plan.</span>
                     </label>
 
                     <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500">
@@ -742,10 +729,10 @@ export default function Home() {
                   <div className="mt-4 space-y-2 text-sm text-slate-300">
                     <div className="rounded-xl bg-slate-950/60 p-4 leading-7">
                       <div>Customer: {customerDetails.fullName}</div>
-                      <div>Product: Television</div>
+                      <div>Product: {selectedPlan.category_name}</div>
                       <div>Brand/model: {customerDetails.brand} / {customerDetails.model}</div>
-                      <div>Selected tenure: {selectedPlan.tenure}</div>
-                      <div>Price: ₹{selectedPlan.price.toLocaleString("en-IN")}</div>
+                      <div>Selected plan: {selectedPlan.label}</div>
+                      <div>Price: ₹{selectedPlan.price_inr.toLocaleString("en-IN")}</div>
                       <div>Purchase date: {customerDetails.purchaseDate}</div>
                       <div>Invoice: {invoiceFile ? invoiceFile.name : "Not uploaded"}</div>
                       <div>Mobile/email: {customerDetails.mobile} / {customerDetails.email}</div>

@@ -1,35 +1,15 @@
 import { NextResponse } from "next/server";
 
+import { handleCustomerRequest } from "@/app/lib/agents/ceo";
 import {
-  analyzeInvoiceAndAnswer,
-  askWarrio,
+  isSupportedInvoiceFile,
   MAX_INVOICE_UPLOAD_BYTES,
-  SUPPORTED_INVOICE_MIME_TYPES,
-} from "@/app/lib/ai/provider";
+  toInvoiceUpload,
+} from "@/app/lib/invoiceFile";
 
 function getTextField(formData: FormData, key: string) {
   const value = formData.get(key);
-
-  return typeof value === "string" ? value : "";
-}
-
-function isSupportedInvoiceFile(file: File) {
-  if (SUPPORTED_INVOICE_MIME_TYPES.has(file.type)) {
-    return true;
-  }
-
-  const loweredName = file.name.toLowerCase();
-
-  return (
-    loweredName.endsWith(".pdf") ||
-    loweredName.endsWith(".jpg") ||
-    loweredName.endsWith(".jpeg") ||
-    loweredName.endsWith(".png") ||
-    loweredName.endsWith(".webp") ||
-    loweredName.endsWith(".gif") ||
-    loweredName.endsWith(".heic") ||
-    loweredName.endsWith(".heif")
-  );
+  return typeof value === "string" ? value.trim() : "";
 }
 
 export async function POST(request: Request) {
@@ -39,74 +19,62 @@ export async function POST(request: Request) {
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const message = getTextField(formData, "message");
-      const selectedProduct = getTextField(formData, "selectedProduct");
       const invoiceEntry = formData.get("invoice");
+      const invoice =
+        invoiceEntry instanceof File && invoiceEntry.size > 0 ? invoiceEntry : null;
 
-      if (invoiceEntry instanceof File) {
-        if (invoiceEntry.size > MAX_INVOICE_UPLOAD_BYTES) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "Please upload an invoice smaller than 10 MB.",
-            },
-            { status: 413 }
-          );
-        }
-
-        if (!isSupportedInvoiceFile(invoiceEntry)) {
-          return NextResponse.json(
-            {
-              success: false,
-              message:
-                "Unsupported invoice file type. Please upload a PDF or common image format.",
-            },
-            { status: 415 }
-          );
-        }
-
-        const buffer = Buffer.from(await invoiceEntry.arrayBuffer());
-        const result = await analyzeInvoiceAndAnswer({
-          message:
-            message || "Please analyze this invoice and recommend the available warranty options.",
-          selectedProduct: selectedProduct || undefined,
-          invoice: {
-            buffer,
-            mimeType: invoiceEntry.type || (invoiceEntry.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream"),
-            fileName: invoiceEntry.name,
-          },
-        });
-
-        return NextResponse.json(result);
+      if (invoice && invoice.size > MAX_INVOICE_UPLOAD_BYTES) {
+        return NextResponse.json(
+          { success: false, message: "Please upload an invoice smaller than 10 MB." },
+          { status: 413 }
+        );
       }
 
-      if (!message) {
+      if (invoice && !isSupportedInvoiceFile(invoice)) {
         return NextResponse.json(
           {
             success: false,
-            message: "Please provide a message.",
+            message:
+              "Unsupported invoice file type. Please upload a PDF or common image format.",
           },
+          { status: 415 }
+        );
+      }
+
+      if (!invoice && !message) {
+        return NextResponse.json(
+          { success: false, message: "Please provide a message." },
           { status: 400 }
         );
       }
 
-      const result = await askWarrio(message);
+      const result = await handleCustomerRequest({
+        channel: "website",
+        message,
+        customerName: getTextField(formData, "customerName") || undefined,
+        selectedProduct: getTextField(formData, "selectedProduct") || undefined,
+        invoice: invoice ? await toInvoiceUpload(invoice) : undefined,
+      });
+
       return NextResponse.json(result);
     }
 
     const body = await request.json();
-    const message = body?.message;
+    const message = typeof body?.message === "string" ? body.message.trim() : "";
 
-    if (!message || typeof message !== "string") {
+    if (!message) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Please provide a message.",
-        },
+        { success: false, message: "Please provide a message." },
         { status: 400 }
       );
     }
 
-    const result = await askWarrio(message);
+    const result = await handleCustomerRequest({
+      channel: "website",
+      message,
+      selectedProduct:
+        typeof body?.selectedProduct === "string" ? body.selectedProduct : undefined,
+    });
 
     return NextResponse.json(result);
   } catch (error) {
