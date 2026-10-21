@@ -2,6 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from "react";
 
+import GetPlanBox from "./components/GetPlanBox";
 import SiteFooter from "./components/SiteFooter";
 import SiteHeader from "./components/SiteHeader";
 
@@ -227,9 +228,12 @@ export default function Home() {
   };
 
 
-  const submitQuestion = async () => {
+  // fileOverride lets a freshly picked invoice be reviewed straight away,
+  // before the invoiceFile state update has landed.
+  const submitQuestion = async (fileOverride?: File) => {
+    const invoice = fileOverride ?? invoiceFile;
     const trimmedQuestion = question.trim();
-    const hasInvoice = Boolean(invoiceFile);
+    const hasInvoice = Boolean(invoice);
     let requestId = 0;
 
     if (!trimmedQuestion && !hasInvoice) {
@@ -246,7 +250,7 @@ export default function Home() {
         ? ++invoiceAnalysisRequestIdRef.current
         : invoiceAnalysisRequestIdRef.current;
 
-      if (hasInvoice && invoiceFile) {
+      if (hasInvoice && invoice) {
         setIsAnalyzingInvoice(true);
         setAnswer("");
 
@@ -256,7 +260,7 @@ export default function Home() {
           trimmedQuestion ||
             "Please analyze this invoice and recommend the available warranty options."
         );
-        formData.append("invoice", invoiceFile, invoiceFile.name);
+        formData.append("invoice", invoice, invoice.name);
 
         if (selectedProduct) {
           formData.append("selectedProduct", selectedProduct);
@@ -337,6 +341,18 @@ export default function Home() {
     }
   };
 
+  // Picking an invoice anywhere on the page opens Warrio and starts the review.
+  const reviewInvoice = (file: File | null) => {
+    setInvoiceFile(file);
+    if (!file) return;
+    setChatOpen(true);
+    setJourneyStep("chat");
+    setInvoiceAnalysis(null);
+    setFormErrors([]);
+    setLeadError("");
+    void submitQuestion(file);
+  };
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <SiteHeader onAskWarrio={() => openWarrio()} />
@@ -344,7 +360,7 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,139,232,0.14),transparent_45%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-12 lg:grid-cols-2 lg:items-center lg:py-16">
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-4 py-2 text-sm font-semibold text-brand-green-dark">
               <span className="h-2 w-2 rounded-full bg-brand-green-dark" />
@@ -389,40 +405,15 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-lg">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-200 backdrop-blur-xl">
-              <div className="flex items-center gap-4 border-b border-slate-200 pb-5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue text-3xl text-white">
-                  🛡️
-                </div>
-
-                <div>
-                  <div className="font-bold">Warrio AI</div>
-                  <div className="flex items-center gap-2 text-sm text-emerald-600">
-                    <span className="h-2 w-2 rounded-full bg-brand-green" />
-                    Ready to help
-                  </div>
-                </div>
-              </div>
-
-              <div className="py-6">
-                <div className="max-w-sm rounded-2xl rounded-tl-sm bg-slate-100 p-4 text-sm leading-6 text-slate-800">
-                  Hi! I&apos;m Warrio. 👋
-                  <br />
-                  <br />
-                  Tell me what product you want to protect or what warranty
-                  question you have.
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => openWarrio()}
-                className="w-full rounded-2xl bg-brand-blue py-4 font-bold transition hover:bg-brand-blue-dark text-white"
-              >
-                Start Conversation →
-              </button>
-            </div>
+          {/* On phones the plan box comes first, so customers can start straight away. */}
+          <div className="order-first mx-auto w-full max-w-lg lg:order-none">
+            <GetPlanBox
+              onInvoice={reviewInvoice}
+              onSelectProduct={(productName) => {
+                setSelectedProduct(productName);
+                setSelectedPlanId("");
+              }}
+            />
           </div>
         </div>
       </section>
@@ -785,15 +776,15 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-5 flex gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <input
                 type="file"
                 accept="image/*,.pdf"
                 className="hidden"
                 id="invoice-upload"
                 onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setInvoiceFile(file);
+                  reviewInvoice(e.target.files?.[0] || null);
+                  e.target.value = "";
                 }}
               />
 
@@ -825,7 +816,7 @@ export default function Home() {
 
               <button
                 type="button"
-                onClick={submitQuestion}
+                onClick={() => void submitQuestion()}
                 disabled={isAnalyzingInvoice && Boolean(invoiceFile)}
                 className="rounded-2xl bg-brand-blue px-5 font-bold hover:bg-brand-blue-dark text-white"
               >
