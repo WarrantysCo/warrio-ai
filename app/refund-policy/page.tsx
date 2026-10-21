@@ -12,13 +12,6 @@ export const metadata: Metadata = {
     "Cancel your Warrantys.co plan within 7 days of purchase for a full refund.",
 };
 
-// Amit chose the plain 7-day refund (2026-10-21). The source text still says
-// "within7" and "cancellations within 30 days", so both are corrected here
-// until app/data/policies.ts is updated.
-const refundText = refundPolicyText
-  .replace("Cancellation within7 Days", "Cancellation within 7 Days")
-  .replace("cancellations within 30 days", "cancellations within 7 days");
-
 export default function RefundPolicyPage() {
   return (
     <PageShell eyebrow="Policy" title="Refund & Cancellation Policy">
@@ -32,7 +25,7 @@ export default function RefundPolicyPage() {
       </div>
 
       {/* The first two lines of the text are its own titles. */}
-      <PolicyBody blocks={parsePolicy(refundText, 2)} />
+      <PolicyBody blocks={parsePolicy(refundPolicyText, 2)} />
     </PageShell>
   );
 }
