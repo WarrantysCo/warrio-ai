@@ -70,7 +70,7 @@ export const refundPolicyText = `Returns and Exchanges
  Warrantys.co Extended Warranty Return and Refund Policy
 This Return and Refund Policy outlines the conditions under which you can return or request a refund for a Warrantys.co extended warranty on an electronic product.
 Eligibility for Return and Refund:
-Cancellation within7 Days: You have the right to cancel your Warrantys.co extended warranty within 7 days of purchase for a full refund. No reason is required.
+Cancellation within 7 Days: You have the right to cancel your Warrantys.co extended warranty within 7 days of purchase for a full refund. No reason is required.
 Product Not Received: If you do not receive your Warrantys.co extended warranty confirmation within 48 hours of purchase, you are eligible for a full refund.
 Product Ineligibility: In the rare case that your purchased extended warranty is not compatible with your electronic product, you will receive a full refund upon confirmation of the incompatibility.
 Warranty Claim Denied: If Warrantys.co denies a valid warranty claim, you may be eligible for a full or partial refund of your extended warranty depending on the specific circumstances. Please refer to the "Warrantys.co Extended Warranty Terms and Conditions" document for details on claim validation.
@@ -79,7 +79,7 @@ Contact Warrantys.co Support: To initiate a return and refund request, please c
 Provide Required Information: Be prepared to provide your order number, the name of the electronic product covered by the warranty, and the reason for your return request.
 Return Confirmation: Warrantys.co will review your request and send you a confirmation email with further instructions if applicable. For product ineligibility or denied claims, you may be required to provide documentation to support your request.
 Processing Time:
-Refunds for cancellations within 30 days and product non-receipt will be processed within 5 business days of receiving your request.
+Refunds for cancellations within 7 days and product non-receipt will be processed within 5 business days of receiving your request.
 Refunds for product ineligibility and denied claims will be processed within 10 business days of receiving your request and any required documentation.
 Refund Method:
 Refunds will be issued to the original payment method used for the purchase.
