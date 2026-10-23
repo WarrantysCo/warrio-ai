@@ -9,7 +9,9 @@ import {
   quotePlans,
 } from "@/app/lib/agents/sales/pricing";
 import type { SalesAnalysis } from "@/app/lib/agents/sales/types";
-import { sendLeadToN8n } from "@/app/lib/integrations/n8n";
+import { saveLead } from "@/app/lib/integrations/leadStore";
+import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
+import { createPaymentLink } from "@/app/lib/integrations/razorpay";
 import {
   isSupportedInvoiceFile,
   MAX_INVOICE_UPLOAD_BYTES,
@@ -106,7 +108,7 @@ export async function POST(request: Request) {
     const leadReference = createLeadReference();
     const analysis = readAnalysis(getValue(values, "analysis"));
 
-    const n8n = await sendLeadToN8n({
+    const lead: LeadRow = {
       date: new Date().toISOString(),
       name: getValue(values, "fullName"),
       mobile,
@@ -132,11 +134,29 @@ export async function POST(request: Request) {
       status: "new",
       source: "website",
       lead_reference: leadReference,
+    };
+
+    // The price comes from our own price list, never from the browser.
+    const paymentUrl = await createPaymentLink({
+      priceInr: selectedPlan.price_inr,
+      planName: selectedPlan.plan_name,
+      device: [lead.brand, lead.model].filter(Boolean).join(" ") || selectedPlan.category_name,
+      name: lead.name,
+      mobile,
+      email,
+      leadReference,
     });
+
+    const [saved, n8n] = await Promise.all([
+      saveLead({ ...lead, payment_link: paymentUrl ?? "" }),
+      sendLeadToN8n(lead),
+    ]);
 
     return NextResponse.json({
       success: true,
       leadReference,
+      paymentUrl,
+      saved,
       n8n,
       order: {
         product: selectedPlan.category_name,
