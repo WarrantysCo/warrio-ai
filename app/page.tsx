@@ -6,6 +6,7 @@ import GetPlanBox from "./components/GetPlanBox";
 import SiteFooter from "./components/SiteFooter";
 import SiteHeader from "./components/SiteHeader";
 
+import { contact } from "./data/contact";
 import { priceCategories } from "./data/priceList";
 import { getCategory, lowestPrice } from "./lib/agents/sales/pricing";
 import type { SalesAnalysis } from "./lib/agents/sales/types";
@@ -108,6 +109,7 @@ export default function Home() {
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadReference, setLeadReference] = useState("");
+  const [paymentUrl, setPaymentUrl] = useState("");
   const [leadError, setLeadError] = useState("");
   const invoiceAnalysisRequestIdRef = useRef(0);
 
@@ -214,6 +216,7 @@ export default function Home() {
       }
 
       setLeadReference(result.leadReference);
+      setPaymentUrl(typeof result.paymentUrl === "string" ? result.paymentUrl : "");
       setJourneyStep("success");
     } catch {
       setLeadError("We could not create your request. Please try again.");
@@ -567,9 +570,32 @@ export default function Home() {
                 <div>
                   Price: ₹{selectedPlan?.price_inr.toLocaleString("en-IN")}
                 </div>
-                <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-amber-900">
-                  Payment setup in progress
-                </div>
+                {paymentUrl ? (
+                  <a
+                    href={paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 block rounded-xl bg-brand-blue py-3 text-center text-base font-bold text-white transition hover:bg-brand-blue-dark"
+                  >
+                    Pay ₹{selectedPlan?.price_inr.toLocaleString("en-IN")} securely →
+                  </a>
+                ) : (
+                  <a
+                    href={`${contact.whatsappHref}?text=${encodeURIComponent(
+                      `Hello Warrantys.co, I'd like to pay for my plan. Reference: ${leadReference}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 block rounded-xl bg-[#25D366] py-3 text-center text-base font-bold text-white transition hover:opacity-90"
+                  >
+                    Get your payment link on WhatsApp →
+                  </a>
+                )}
+                <p className="mt-2 text-xs text-emerald-900/80">
+                  {paymentUrl
+                    ? "Opens Razorpay's secure payment page. We never ask for card details or OTP on chat."
+                    : "Our team will send you a secure payment link on WhatsApp."}
+                </p>
               </div>
             ) : (
               <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
