@@ -580,21 +580,32 @@ export default function Home() {
                     Pay ₹{selectedPlan?.price_inr.toLocaleString("en-IN")} securely →
                   </a>
                 ) : (
-                  <a
-                    href={`${contact.whatsappHref}?text=${encodeURIComponent(
-                      `Hello Warrantys.co, I'd like to pay for my plan. Reference: ${leadReference}`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 block rounded-xl bg-[#25D366] py-3 text-center text-base font-bold text-white transition hover:opacity-90"
-                  >
-                    Get your payment link on WhatsApp →
-                  </a>
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-slate-700">
+                    Our payment page is busy right now. Our team will call you
+                    from <span className="font-semibold">+91 88751 92691</span>{" "}
+                    within 2 hours to complete your plan.
+                    <div className="mt-3 flex gap-4 text-sm">
+                      <a href={contact.phoneHref} className="font-semibold text-brand-blue hover:text-brand-blue-dark">
+                        📞 Call us
+                      </a>
+                      <a
+                        href={`${contact.whatsappHref}?text=${encodeURIComponent(
+                          `Hello Warrantys.co, my request reference is ${leadReference}.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-blue hover:text-brand-blue-dark"
+                      >
+                        💬 WhatsApp us
+                      </a>
+                    </div>
+                  </div>
                 )}
                 <p className="mt-2 text-xs text-emerald-900/80">
                   {paymentUrl
-                    ? "Opens Razorpay's secure payment page. We never ask for card details or OTP on chat."
-                    : "Our team will send you a secure payment link on WhatsApp."}
+                    ? "Opens Razorpay's secure payment page. "
+                    : ""}
+                  We never ask for OTP, PIN or card details on call or chat.
                 </p>
               </div>
             ) : (
