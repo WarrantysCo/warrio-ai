@@ -60,6 +60,9 @@ export async function POST(request: Request) {
     const consent = getValue(values, "consent") === "true";
     const email = getValue(values, "email");
     const mobile = getValue(values, "mobile");
+    // "Pay now, send bill later": only plan, price, name and mobile are known;
+    // the device details and eligibility are checked when the bill arrives.
+    const billLater = getValue(values, "billLater") === "true";
     const errors: string[] = [];
 
     if (!selectedPlan) {
@@ -76,19 +79,25 @@ export async function POST(request: Request) {
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       errors.push("A valid 10-digit mobile number is required.");
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.push("A valid email address is required.");
-    }
-    if (!getValue(values, "brand")) errors.push("Brand is required.");
-    if (!getValue(values, "model")) errors.push("Model is required.");
-    if (!getValue(values, "serialNumber")) errors.push("Serial number is required.");
-    if (!purchaseDate) {
-      errors.push("Purchase date is required.");
-    } else if (
-      (daysSincePurchase(purchaseDate) ?? -1) < 0 ||
-      !isWithinPurchaseWindow(purchaseDate)
-    ) {
-      errors.push("The purchase date is outside the plan window.");
+    if (billLater) {
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.push("A valid email address is required.");
+      }
+    } else {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.push("A valid email address is required.");
+      }
+      if (!getValue(values, "brand")) errors.push("Brand is required.");
+      if (!getValue(values, "model")) errors.push("Model is required.");
+      if (!getValue(values, "serialNumber")) errors.push("Serial number is required.");
+      if (!purchaseDate) {
+        errors.push("Purchase date is required.");
+      } else if (
+        (daysSincePurchase(purchaseDate) ?? -1) < 0 ||
+        !isWithinPurchaseWindow(purchaseDate)
+      ) {
+        errors.push("The purchase date is outside the plan window.");
+      }
     }
     if (!consent) errors.push("Consent is required to proceed.");
 
@@ -125,13 +134,16 @@ export async function POST(request: Request) {
       model: getValue(values, "model"),
       serial_or_imei: getValue(values, "serialNumber"),
       price_inr: priceInr,
-      days_since_purchase: daysSincePurchase(purchaseDate),
+      days_since_purchase: purchaseDate ? daysSincePurchase(purchaseDate) : null,
       recommended_plan: selectedPlan.plan_name,
       plan_price_inr: selectedPlan.price_inr,
-      notes_for_team:
-        typeof analysis.notes_for_team === "string" ? analysis.notes_for_team : "",
+      notes_for_team: billLater
+        ? "Paid before sending the bill. Collect the bill within 7 days and check eligibility before starting the plan; refund in full if not eligible."
+        : typeof analysis.notes_for_team === "string"
+          ? analysis.notes_for_team
+          : "",
       warrio_reply: typeof analysis.reply === "string" ? analysis.reply : "",
-      status: "new",
+      status: billLater ? "bill_pending" : "new",
       source: "website",
       lead_reference: leadReference,
     };
@@ -164,7 +176,7 @@ export async function POST(request: Request) {
         tenureYears: selectedPlan.tenure_years,
         price: selectedPlan.price_inr,
         currency: "INR",
-        invoiceStatus: invoice ? "received" : "not_uploaded",
+        invoiceStatus: invoice ? "received" : billLater ? "bill_later" : "not_uploaded",
       },
     });
   } catch {
