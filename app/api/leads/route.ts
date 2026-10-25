@@ -9,6 +9,7 @@ import {
   quotePlans,
 } from "@/app/lib/agents/sales/pricing";
 import type { SalesAnalysis } from "@/app/lib/agents/sales/types";
+import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
 import { createPaymentLink } from "@/app/lib/integrations/razorpay";
@@ -147,9 +148,11 @@ export async function POST(request: Request) {
       leadReference,
     });
 
-    const [saved, n8n] = await Promise.all([
-      saveLead({ ...lead, payment_link: paymentUrl ?? "" }),
+    const leadWithLink = { ...lead, payment_link: paymentUrl ?? "" };
+    const [saved, n8n, hubspot] = await Promise.all([
+      saveLead(leadWithLink),
       sendLeadToN8n(lead),
+      sendLeadToHubSpot(leadWithLink),
     ]);
 
     return NextResponse.json({
@@ -158,6 +161,7 @@ export async function POST(request: Request) {
       paymentUrl,
       saved,
       n8n,
+      hubspot,
       order: {
         product: selectedPlan.category_name,
         planId: selectedPlan.id,

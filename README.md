@@ -43,6 +43,7 @@ JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Work
 | `GEMINI_API_KEY` | Reading invoices and answering questions |
 | `N8N_LEADS_WEBHOOK_URL` | Optional. n8n Webhook URL that saves website leads |
 | `N8N_WEBHOOK_SECRET` | Optional. Sent as the `X-Warrio-Secret` header |
+| `HUBSPOT_ACCESS_TOKEN` | Optional. HubSpot private app token (scopes `crm.objects.contacts.write`, `crm.objects.deals.write`); each lead becomes a contact plus a deal |
 
 ## Run locally
 
