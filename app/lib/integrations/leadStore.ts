@@ -1,20 +1,22 @@
 import "server-only";
 
 import { appendFile, mkdir, readFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import type { LeadRow } from "./n8n";
 
 // Keeps every website lead on the server itself, one JSON line per lead, so
-// nothing depends on n8n or a laptop being on. Set LEADS_FILE to a path
-// outside the app folder on the host so a new upload of the site keeps it.
+// nothing depends on n8n or a laptop being on. The default lives in the home
+// folder, not the app folder, because Hostinger replaces the app folder on
+// every deploy and a lead saved there was lost. LEADS_FILE overrides it.
 
 export type StoredLead = LeadRow & { payment_link: string };
 
 function leadsFile() {
   return (
     process.env.LEADS_FILE ||
-    path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "leads.jsonl")
+    path.join(/*turbopackIgnore: true*/ os.homedir(), "warrio-data", "leads.jsonl")
   );
 }
 

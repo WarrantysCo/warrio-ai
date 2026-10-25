@@ -4,27 +4,32 @@ import { useRef, useState } from "react";
 
 import { priceCategories } from "@/app/data/priceList";
 import { quotePlans } from "@/app/lib/agents/sales/pricing";
+import type { PlanQuote } from "@/app/lib/agents/sales/types";
 
 type Tab = "upload" | "price";
 
 // The home page's two quick ways in: upload a bill for Warrio to read, or
-// look up the price yourself. Buying always goes through the bill upload,
-// because Warrio needs the invoice to check eligibility.
+// look up the price yourself. After picking a plan the customer can upload
+// the bill now, or pay now and send the bill later so no sale is lost.
 export default function GetPlanBox({
   onInvoice,
   onSelectProduct,
+  onPayLater,
 }: {
   onInvoice: (file: File | null) => void;
-  onSelectProduct: (productName: string) => void;
+  onSelectProduct: (productName: string, tenureYears: number) => void;
+  onPayLater: (quote: PlanQuote, priceInr: number) => void;
 }) {
   const [tab, setTab] = useState<Tab>("upload");
   const [categoryId, setCategoryId] = useState("");
   const [priceText, setPriceText] = useState("");
+  const [chosenQuoteId, setChosenQuoteId] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const priceInr = Number(priceText.replace(/[^\d]/g, ""));
   const category = priceCategories.find((entry) => entry.id === categoryId);
   const quotes = category && priceInr > 0 ? quotePlans(category.id, priceInr) : [];
+  const chosenQuote = quotes.find((quote) => quote.id === chosenQuoteId);
 
   const tabClass = (active: boolean) =>
     `flex-1 rounded-xl px-4 py-3 text-sm font-bold transition ${
@@ -109,32 +114,60 @@ export default function GetPlanBox({
             <div className="rounded-2xl bg-slate-50 p-4">
               {quotes.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-3 gap-2">
-                    {quotes.map((quote) => (
-                      <div
-                        key={quote.id}
-                        className="rounded-xl border border-slate-200 bg-white p-3 text-center"
-                      >
-                        <div className="text-xs text-slate-600">{quote.label}</div>
-                        <div className="mt-1 text-lg font-black text-brand-blue">
-                          ₹{quote.price_inr.toLocaleString("en-IN")}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="text-sm font-semibold text-slate-700">
+                    Choose your plan
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelectProduct(category.name);
-                      fileInputRef.current?.click();
-                    }}
-                    className="mt-3 w-full rounded-xl bg-brand-blue py-3 font-bold text-white transition hover:bg-brand-blue-dark"
-                  >
-                    Buy now: upload your bill →
-                  </button>
-                  <p className="mt-2 text-center text-xs text-slate-500">
-                    We need your bill to check your device and start the plan.
-                  </p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {quotes.map((quote) => {
+                      const chosen = quote.id === chosenQuote?.id;
+                      return (
+                        <button
+                          type="button"
+                          key={quote.id}
+                          aria-pressed={chosen}
+                          onClick={() => setChosenQuoteId(quote.id)}
+                          className={`rounded-xl border-2 p-3 text-center transition ${
+                            chosen
+                              ? "border-brand-green-dark bg-brand-green/15"
+                              : "border-slate-200 bg-white hover:border-brand-blue"
+                          }`}
+                        >
+                          <div className="text-xs text-slate-600">
+                            {chosen ? "✓ " : ""}
+                            {quote.label}
+                          </div>
+                          <div className="mt-1 text-lg font-black text-brand-blue">
+                            ₹{quote.price_inr.toLocaleString("en-IN")}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {chosenQuote ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectProduct(category.name, chosenQuote.tenure_years);
+                          fileInputRef.current?.click();
+                        }}
+                        className="mt-3 w-full rounded-xl bg-brand-blue py-3 font-bold text-white transition hover:bg-brand-blue-dark"
+                      >
+                        📎 Upload bill now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onPayLater(chosenQuote, priceInr)}
+                        className="mt-2 w-full rounded-xl border-2 border-brand-blue bg-white py-3 font-bold text-brand-blue transition hover:bg-blue-50"
+                      >
+                        💳 Pay now, send bill later
+                      </button>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-center text-sm text-slate-600">
+                      Tap a plan to continue.
+                    </p>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-slate-700">

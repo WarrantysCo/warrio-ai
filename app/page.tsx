@@ -9,13 +9,14 @@ import SiteHeader from "./components/SiteHeader";
 import { contact } from "./data/contact";
 import { priceCategories } from "./data/priceList";
 import { getCategory, lowestPrice } from "./lib/agents/sales/pricing";
-import type { SalesAnalysis } from "./lib/agents/sales/types";
+import type { PlanQuote, SalesAnalysis } from "./lib/agents/sales/types";
 
 type JourneyStep =
   | "chat"
   | "recommendation"
   | "options"
   | "eligibility"
+  | "payLater"
   | "details"
   | "summary"
   | "success";
@@ -103,6 +104,14 @@ export default function Home() {
   const [invoiceAnalysis, setInvoiceAnalysis] =
     useState<SalesAnalysis | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  // Plan length the customer tapped before uploading the bill, so Warrio's
+  // options open with that plan already chosen.
+  const [preferredTenure, setPreferredTenure] = useState(0);
+  // Set when the customer chose "Pay now, send bill later".
+  const [payLater, setPayLater] = useState<{
+    quote: PlanQuote;
+    priceInr: number;
+  } | null>(null);
   const [journeyStep, setJourneyStep] = useState<JourneyStep>("chat");
   const [customerDetails, setCustomerDetails] =
     useState<CustomerDetails>(emptyCustomerDetails);
@@ -114,8 +123,10 @@ export default function Home() {
   const invoiceAnalysisRequestIdRef = useRef(0);
 
   const planOptions = invoiceAnalysis?.plan_options ?? [];
-  const selectedPlan = planOptions.find((plan) => plan.id === selectedPlanId);
+  const selectedPlan =
+    payLater?.quote ?? planOptions.find((plan) => plan.id === selectedPlanId);
   const productName =
+    payLater?.quote.category_name ??
     getCategory(invoiceAnalysis?.invoice.product_category ?? "")?.name ??
     "product";
 
@@ -139,6 +150,17 @@ export default function Home() {
     }
     if (!mobilePattern.test(customerDetails.mobile.trim())) {
       errors.push("Please enter a valid 10-digit mobile number.");
+    }
+    if (payLater) {
+      // Device details come with the bill later; email is optional.
+      const email = customerDetails.email.trim();
+      if (email && !emailPattern.test(email)) {
+        errors.push("Please enter a valid email address.");
+      }
+      if (!customerDetails.consent) {
+        errors.push("Please confirm that you want to proceed with this plan.");
+      }
+      return errors;
     }
     if (!emailPattern.test(customerDetails.email.trim())) {
       errors.push("Please enter a valid email address.");
@@ -193,16 +215,21 @@ export default function Home() {
       formData.append("fullName", customerDetails.fullName.trim());
       formData.append("mobile", customerDetails.mobile.trim());
       formData.append("email", customerDetails.email.trim());
-      formData.append("brand", customerDetails.brand.trim());
-      formData.append("model", customerDetails.model.trim());
-      formData.append("serialNumber", customerDetails.serialNumber.trim());
-      formData.append("purchaseDate", customerDetails.purchaseDate);
       formData.append("selectedPlanId", selectedPlan.id);
-      formData.append("priceInr", String(invoiceAnalysis?.invoice.price_inr ?? ""));
-      formData.append("analysis", JSON.stringify(invoiceAnalysis));
       formData.append("consent", String(customerDetails.consent));
 
-      if (invoiceFile) formData.append("invoice", invoiceFile, invoiceFile.name);
+      if (payLater) {
+        formData.append("billLater", "true");
+        formData.append("priceInr", String(payLater.priceInr));
+      } else {
+        formData.append("brand", customerDetails.brand.trim());
+        formData.append("model", customerDetails.model.trim());
+        formData.append("serialNumber", customerDetails.serialNumber.trim());
+        formData.append("purchaseDate", customerDetails.purchaseDate);
+        formData.append("priceInr", String(invoiceAnalysis?.invoice.price_inr ?? ""));
+        formData.append("analysis", JSON.stringify(invoiceAnalysis));
+        if (invoiceFile) formData.append("invoice", invoiceFile, invoiceFile.name);
+      }
 
       const response = await fetch("/api/leads", {
         method: "POST",
@@ -316,7 +343,12 @@ export default function Home() {
 
         setInvoiceAnalysis(analysis);
         setSelectedProduct(getCategory(invoice.product_category)?.name || "");
-        setSelectedPlanId(analysis.recommended_plan_id || "");
+        setSelectedPlanId(
+          analysis.plan_options.find((plan) => plan.tenure_years === preferredTenure)
+            ?.id ||
+            analysis.recommended_plan_id ||
+            ""
+        );
         setCustomerDetails((current) => ({
           ...current,
           fullName: current.fullName || invoice.name_on_invoice || "",
@@ -348,6 +380,7 @@ export default function Home() {
   const reviewInvoice = (file: File | null) => {
     setInvoiceFile(file);
     if (!file) return;
+    setPayLater(null);
     setChatOpen(true);
     setJourneyStep("chat");
     setInvoiceAnalysis(null);
@@ -412,9 +445,18 @@ export default function Home() {
           <div className="order-first mx-auto w-full max-w-lg lg:order-none">
             <GetPlanBox
               onInvoice={reviewInvoice}
-              onSelectProduct={(productName) => {
+              onSelectProduct={(productName, tenureYears) => {
                 setSelectedProduct(productName);
                 setSelectedPlanId("");
+                setPreferredTenure(tenureYears);
+              }}
+              onPayLater={(quote, priceInr) => {
+                setPayLater({ quote, priceInr });
+                setSelectedProduct(quote.category_name);
+                setJourneyStep("payLater");
+                setFormErrors([]);
+                setLeadError("");
+                setChatOpen(true);
               }}
             />
           </div>
@@ -442,6 +484,8 @@ export default function Home() {
                 onClick={() => {
                   setSelectedProduct(product.name);
                   setSelectedPlanId("");
+                  setPreferredTenure(0);
+                  setPayLater(null);
                   setJourneyStep("chat");
                   setFormErrors([]);
                   setLeadError("");
@@ -582,7 +626,6 @@ export default function Home() {
                 ) : (
                   <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-slate-700">
                     Our payment page is busy right now. Our team will call you
-                    from <span className="font-semibold">+91 88751 92691</span>{" "}
                     within 2 hours to complete your plan.
                     <div className="mt-3 flex gap-4 text-sm">
                       <a href={contact.phoneHref} className="font-semibold text-brand-blue hover:text-brand-blue-dark">
@@ -597,6 +640,35 @@ export default function Home() {
                         className="font-semibold text-brand-blue hover:text-brand-blue-dark"
                       >
                         💬 WhatsApp us
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {payLater && (
+                  <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-slate-800">
+                    <div className="font-bold">Next: send us your bill</div>
+                    <p className="mt-1">
+                      Please send a photo or PDF of your purchase bill within 7
+                      days so we can start your plan.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                      <a
+                        href={`${contact.whatsappHref}?text=${encodeURIComponent(
+                          `Hello Warrantys.co, here is my bill for request ${leadReference}.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-blue hover:text-brand-blue-dark"
+                      >
+                        💬 Send bill on WhatsApp
+                      </a>
+                      <a
+                        href={`mailto:${contact.email}?subject=${encodeURIComponent(
+                          `Bill for ${leadReference}`
+                        )}`}
+                        className="font-semibold text-brand-blue hover:text-brand-blue-dark"
+                      >
+                        ✉️ Email your bill
                       </a>
                     </div>
                   </div>
@@ -619,6 +691,8 @@ export default function Home() {
                         ? "Other verified options"
                         : journeyStep === "eligibility"
                           ? "Eligibility review"
+                        : journeyStep === "payLater"
+                          ? "Pay now, send bill later"
                     : journeyStep === "details"
                       ? "Customer details"
                       : "Review your request"}
@@ -696,6 +770,35 @@ export default function Home() {
                 {invoiceAnalysis && journeyStep === "eligibility" && (
                   <div className="mt-3 whitespace-pre-line rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-900">
                     {invoiceAnalysis.reply}
+                  </div>
+                )}
+
+                {journeyStep === "payLater" && payLater && (
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-800">
+                      <div className="font-semibold">{payLater.quote.plan_name}</div>
+                      <div className="text-lg font-black text-brand-blue">
+                        ₹{payLater.quote.price_inr.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Email" type="email" placeholder="Email (optional)" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
+                    </div>
+                    <p className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
+                      Your plan starts after we check your bill. Please send it
+                      within 7 days of paying. If your device is not eligible,
+                      you get a full refund.
+                    </p>
+                    <label className="flex gap-3 text-sm leading-6 text-slate-700">
+                      <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
+                      <span>I want to proceed with this {productName} plan.</span>
+                    </label>
+                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-800">{leadError}</div>}
+                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
+                      {isSubmittingLead ? "Creating your payment link..." : "Continue to secure payment"}
+                    </button>
                   </div>
                 )}
 
