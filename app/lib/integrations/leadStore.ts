@@ -13,7 +13,7 @@ import type { LeadRow } from "./n8n";
 
 export type StoredLead = LeadRow & { payment_link: string };
 
-function leadsFile() {
+export function leadsFile() {
   return (
     process.env.LEADS_FILE ||
     path.join(/*turbopackIgnore: true*/ os.homedir(), "warrio-data", "leads.jsonl")

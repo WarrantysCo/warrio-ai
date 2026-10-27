@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 // Makes a Razorpay payment link for one order, the same way the n8n workflow
 // does. Needs RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET; without them, or if
 // Razorpay refuses, it returns null and the customer is sent to WhatsApp.
@@ -13,6 +15,8 @@ export type PaymentLinkRequest = {
   mobile: string;
   email: string;
   leadReference: string;
+  // Where Razorpay sends the customer after paying.
+  callbackUrl?: string;
 };
 
 export async function createPaymentLink(
@@ -46,6 +50,9 @@ export async function createPaymentLink(
         },
         notify: { sms: false, email: false },
         reminder_enable: false,
+        ...(order.callbackUrl
+          ? { callback_url: order.callbackUrl, callback_method: "get" }
+          : {}),
         notes: {
           plan: order.planName,
           device: order.device,
@@ -72,4 +79,35 @@ export async function createPaymentLink(
     );
     return null;
   }
+}
+
+export type PaymentCallback = {
+  razorpay_payment_id?: string;
+  razorpay_payment_link_id?: string;
+  razorpay_payment_link_reference_id?: string;
+  razorpay_payment_link_status?: string;
+  razorpay_signature?: string;
+};
+
+// Razorpay adds these to the callback URL after a payment. The signature proves
+// they came from Razorpay and that this lead's link was really paid.
+export function isPaidCallback(callback: PaymentCallback, leadReference: string) {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const {
+    razorpay_payment_id: paymentId,
+    razorpay_payment_link_id: linkId,
+    razorpay_payment_link_reference_id: referenceId,
+    razorpay_payment_link_status: status,
+    razorpay_signature: signature,
+  } = callback;
+  if (!keySecret || !paymentId || !linkId || !signature) return false;
+  if (referenceId !== leadReference || status !== "paid") return false;
+
+  const expected = createHmac("sha256", keySecret)
+    .update(`${linkId}|${referenceId}|${status}|${paymentId}`)
+    .digest("hex");
+  return (
+    signature.length === expected.length &&
+    timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  );
 }
