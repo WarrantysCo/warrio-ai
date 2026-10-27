@@ -162,7 +162,8 @@ export default function Home() {
       }
       return errors;
     }
-    if (!emailPattern.test(customerDetails.email.trim())) {
+    const email = customerDetails.email.trim();
+    if (email && !emailPattern.test(email)) {
       errors.push("Please enter a valid email address.");
     }
     if (!customerDetails.brand.trim()) {
@@ -170,9 +171,6 @@ export default function Home() {
     }
     if (!customerDetails.model.trim()) {
       errors.push("Please enter the product model.");
-    }
-    if (!customerDetails.serialNumber.trim()) {
-      errors.push("Please enter the product serial number.");
     }
     if (!customerDetails.purchaseDate) {
       errors.push("Please enter the purchase date.");
@@ -817,8 +815,8 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
+                      <input aria-label="Mobile number" type="tel" inputMode="numeric" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
                       <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
-                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
                       <input aria-label="Email" type="email" placeholder="Email (optional)" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
                     </div>
                     <p className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
@@ -843,12 +841,12 @@ export default function Home() {
                 {journeyStep === "details" && (
                   <div className="mt-4 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
+                      <input aria-label="Mobile number" type="tel" inputMode="numeric" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
                       <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
-                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
-                      <input aria-label="Email" type="email" placeholder="Email" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
+                      <input aria-label="Email" type="email" placeholder="Email (optional)" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
                       <input aria-label="Brand" placeholder="Brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
                       <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
-                      <input aria-label="Serial number" placeholder="Serial number" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Serial number" placeholder="Serial number (optional)" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
                       <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-blue-500" />
                     </div>
 
@@ -883,7 +881,7 @@ export default function Home() {
                       <div>Price: ₹{selectedPlan.price_inr.toLocaleString("en-IN")}</div>
                       <div>Purchase date: {customerDetails.purchaseDate}</div>
                       <div>Invoice: {invoiceFile ? invoiceFile.name : "Not uploaded"}</div>
-                      <div>Mobile/email: {customerDetails.mobile} / {customerDetails.email}</div>
+                      <div>Mobile: {customerDetails.mobile}{customerDetails.email ? ` / ${customerDetails.email}` : ""}</div>
                     </div>
                     {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-red-800">{leadError}</div>}
                     <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60 text-white">

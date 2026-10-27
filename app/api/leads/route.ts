@@ -79,17 +79,13 @@ export async function POST(request: Request) {
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       errors.push("A valid 10-digit mobile number is required.");
     }
-    if (billLater) {
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        errors.push("A valid email address is required.");
-      }
-    } else {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        errors.push("A valid email address is required.");
-      }
+    // Email is optional everywhere: customers give their mobile number first.
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.push("A valid email address is required.");
+    }
+    if (!billLater) {
       if (!getValue(values, "brand")) errors.push("Brand is required.");
       if (!getValue(values, "model")) errors.push("Model is required.");
-      if (!getValue(values, "serialNumber")) errors.push("Serial number is required.");
       if (!purchaseDate) {
         errors.push("Purchase date is required.");
       } else if (
