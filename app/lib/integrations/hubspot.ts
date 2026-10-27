@@ -130,3 +130,55 @@ export async function sendLeadToHubSpot(
     return "failed";
   }
 }
+
+// Logs the certificate email on the customer's HubSpot contact timeline, so
+// every communication is visible in one place.
+export async function logCertificateEmailToHubSpot(options: {
+  email: string;
+  mobile: string;
+  subject: string;
+  body: string;
+  sentAt: number;
+}): Promise<HubSpotDelivery> {
+  const token = process.env.HUBSPOT_ACCESS_TOKEN;
+  if (!token) return "skipped";
+
+  try {
+    const email = options.email.trim().toLowerCase();
+    const phone = `+91${options.mobile}`;
+    const found = await hubspot("/crm/v3/objects/contacts/search", token, {
+      filterGroups: [
+        email
+          ? { filters: [{ propertyName: "email", operator: "EQ", value: email }] }
+          : { filters: [{ propertyName: "phone", operator: "EQ", value: phone }] },
+      ],
+      properties: ["email"],
+      limit: 1,
+    });
+    const contactId = found?.results?.[0]?.id;
+    if (!contactId) return "skipped";
+
+    await hubspot("/crm/v3/objects/emails", token, {
+      properties: {
+        hs_timestamp: String(options.sentAt),
+        hs_email_direction: "EMAIL",
+        hs_email_status: "SENT",
+        hs_email_subject: options.subject,
+        hs_email_text: options.body,
+      },
+      associations: [
+        {
+          to: { id: contactId },
+          types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 198 }],
+        },
+      ],
+    });
+    return "sent";
+  } catch (error) {
+    console.error(
+      "HubSpot certificate email log error:",
+      error instanceof Error ? error.message : error
+    );
+    return "failed";
+  }
+}

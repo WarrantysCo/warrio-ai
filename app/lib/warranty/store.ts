@@ -33,11 +33,21 @@ export type DetailsRecord = {
   notes_for_team: string;
 };
 
-export type WarrantyRecord = PaymentRecord | DetailsRecord;
+export type CertificateSentRecord = {
+  type: "sent";
+  date: string;
+  lead_reference: string;
+  email: string;
+  plan_start_date: string;
+  plan_end_date: string;
+};
+
+export type WarrantyRecord = PaymentRecord | DetailsRecord | CertificateSentRecord;
 
 export type WarrantyStatus = {
   payment?: PaymentRecord;
   details?: DetailsRecord;
+  sent?: CertificateSentRecord;
 };
 
 function dataDir() {
@@ -81,6 +91,7 @@ export async function readWarrantyStatuses(): Promise<Map<string, WarrantyStatus
     const status = statuses.get(record.lead_reference) ?? {};
     if (record.type === "payment") status.payment = record;
     if (record.type === "details") status.details = record;
+    if (record.type === "sent") status.sent = record;
     statuses.set(record.lead_reference, status);
   }
   return statuses;
@@ -88,6 +99,19 @@ export async function readWarrantyStatuses(): Promise<Map<string, WarrantyStatus
 
 export async function readWarrantyStatus(leadReference: string) {
   return (await readWarrantyStatuses()).get(leadReference) ?? {};
+}
+
+export type WarrantyQueueRow = {
+  lead_reference: string;
+} & WarrantyStatus;
+
+// Every lead that sent its details, newest first, for the admin page.
+export async function readWarrantyQueue(): Promise<WarrantyQueueRow[]> {
+  const statuses = await readWarrantyStatuses();
+  return [...statuses.entries()]
+    .filter(([, status]) => status.details)
+    .map(([lead_reference, status]) => ({ lead_reference, ...status }))
+    .sort((a, b) => (b.details?.date ?? "").localeCompare(a.details?.date ?? ""));
 }
 
 // Invoices are saved as <lead reference>-<time>.<ext> in an invoices folder.
