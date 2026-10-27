@@ -13,6 +13,7 @@ import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
 import { createPaymentLink } from "@/app/lib/integrations/razorpay";
+import { warrantyLink } from "@/app/lib/warranty/link";
 import {
   isSupportedInvoiceFile,
   MAX_INVOICE_UPLOAD_BYTES,
@@ -154,6 +155,8 @@ export async function POST(request: Request) {
       mobile,
       email,
       leadReference,
+      // After paying, the customer lands on the form for the certificate.
+      callbackUrl: warrantyLink(leadReference),
     });
 
     const leadWithLink = { ...lead, payment_link: paymentUrl ?? "" };

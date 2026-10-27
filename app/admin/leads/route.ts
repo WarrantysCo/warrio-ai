@@ -1,23 +1,10 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-
+import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 
 // Downloads every website lead as a CSV file that opens in Excel. The browser
 // asks for a password: any user name, and the ADMIN_PASSWORD set on the host.
 
 export const dynamic = "force-dynamic";
-
-function isAllowed(request: Request) {
-  const password = process.env.ADMIN_PASSWORD;
-  const header = request.headers.get("authorization") || "";
-  if (!password || !header.startsWith("Basic ")) return false;
-
-  const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
-  const given = decoded.slice(decoded.indexOf(":") + 1);
-  // Hashing first gives equal lengths, which timingSafeEqual needs.
-  const hash = (value: string) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(hash(given), hash(password));
-}
 
 function csvCell(value: unknown) {
   const text = value === null || value === undefined ? "" : String(value);
@@ -27,12 +14,7 @@ function csvCell(value: unknown) {
 }
 
 export async function GET(request: Request) {
-  if (!isAllowed(request)) {
-    return new Response("Password needed.", {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="Warrio leads"' },
-    });
-  }
+  if (!isAdminAllowed(request)) return adminAuthRequired();
 
   const leads = await readLeads();
   const columns = [
