@@ -580,7 +580,7 @@ export default function Home() {
 
       {isChatOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm md:items-center">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-bold">🛡️ Warrio AI</div>
@@ -688,7 +688,7 @@ export default function Home() {
                     : journeyStep === "recommendation"
                       ? "Warrio's recommendation"
                       : journeyStep === "options"
-                        ? "Other verified options"
+                        ? "Choose your plan"
                         : journeyStep === "eligibility"
                           ? "Eligibility review"
                         : journeyStep === "payLater"
@@ -735,7 +735,7 @@ export default function Home() {
                       onClick={() => setJourneyStep("options")}
                       className="mt-2 w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50"
                     >
-                      View Other Plans
+                      Compare all plans
                     </button>
                   </>
                 )}
@@ -743,27 +743,62 @@ export default function Home() {
                 {invoiceAnalysis && journeyStep === "options" && (
                   <>
                     <p className="mt-3 text-sm leading-6 text-slate-700">
-                      These are the other verified {productName} options. Coverage does not
-                      change unless the verified plan data says otherwise.
+                      Choose the protection that suits you for your {productName}.
                     </p>
                     <div className="mt-3 space-y-2">
-                      {planOptions
-                        .filter((plan) => plan.id !== invoiceAnalysis.recommended_plan_id)
-                        .map((plan) => (
+                      {planOptions.map((plan) => {
+                        const chosen = plan.id === selectedPlanId;
+                        return (
                           <button
                             type="button"
                             key={plan.id}
-                            onClick={() => {
-                              setSelectedPlanId(plan.id);
-                              setJourneyStep("details");
-                            }}
-                            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left hover:bg-slate-50"
+                            aria-pressed={chosen}
+                            onClick={() => setSelectedPlanId(plan.id)}
+                            className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition ${
+                              chosen
+                                ? "border-brand-blue bg-blue-50"
+                                : "border-slate-200 bg-white hover:border-brand-blue/50"
+                            }`}
                           >
-                            <span>{plan.label} · shorter commitment / lower upfront option</span>
-                            <span className="font-semibold">₹{plan.price_inr.toLocaleString("en-IN")}</span>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={`flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs ${
+                                  chosen ? "border-brand-blue bg-brand-blue text-white" : "border-slate-300"
+                                }`}
+                              >
+                                {chosen ? "✓" : ""}
+                              </span>
+                              <span className="font-semibold text-slate-800">{plan.label}</span>
+                              {plan.id === invoiceAnalysis.recommended_plan_id && (
+                                <span className="rounded-full bg-brand-green/20 px-2 py-0.5 text-xs font-semibold text-brand-green-dark">
+                                  Recommended
+                                </span>
+                              )}
+                            </span>
+                            <span className="font-bold text-brand-blue">
+                              ₹{plan.price_inr.toLocaleString("en-IN")}
+                            </span>
                           </button>
-                        ))}
+                        );
+                      })}
                     </div>
+                    <button
+                      type="button"
+                      onClick={continueToDetails}
+                      disabled={!selectedPlan}
+                      className="mt-4 w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:opacity-60"
+                    >
+                      {selectedPlan
+                        ? `Continue with ₹${selectedPlan.price_inr.toLocaleString("en-IN")}`
+                        : "Choose a plan"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJourneyStep("recommendation")}
+                      className="mt-2 w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      ← Back
+                    </button>
                   </>
                 )}
 
@@ -799,6 +834,9 @@ export default function Home() {
                     <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
                       {isSubmittingLead ? "Creating your payment link..." : "Continue to secure payment"}
                     </button>
+                    <button type="button" onClick={() => { setChatOpen(false); setAskLinkDismissed(true); }} className="w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                      ← Change plan
+                    </button>
                   </div>
                 )}
 
@@ -818,7 +856,7 @@ export default function Home() {
                       <button type="button" onClick={() => document.getElementById("invoice-upload")?.click()} className="font-semibold text-brand-blue hover:text-brand-blue-dark">
                         {invoiceFile ? "Replace invoice" : "Upload invoice"}
                       </button>
-                      <span className="ml-2">{invoiceFile ? invoiceFile.name : "(optional for this V1)"}</span>
+                      <span className="ml-2">{invoiceFile ? invoiceFile.name : "(optional, you can send it later)"}</span>
                     </div>
 
                     <label className="flex gap-3 text-sm leading-6 text-slate-700">
@@ -828,6 +866,9 @@ export default function Home() {
 
                     <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white">
                       Review request
+                    </button>
+                    <button type="button" onClick={() => { setFormErrors([]); setJourneyStep("options"); }} className="w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                      ← Change plan
                     </button>
                   </div>
                 )}
@@ -964,10 +1005,6 @@ export default function Home() {
               </button>
             </div>
 
-            <p className="mt-4 text-center text-xs text-slate-400">
-              Warrio will use verified warranty information when connected to
-              the production system.
-            </p>
           </div>
         </div>
       )}
