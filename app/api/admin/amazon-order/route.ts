@@ -1,5 +1,3 @@
-import { randomInt } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
 import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
@@ -7,6 +5,7 @@ import { quotePlans } from "@/app/lib/agents/sales/pricing";
 import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import type { LeadRow } from "@/app/lib/integrations/n8n";
+import { amazonLeadReference } from "@/app/lib/warranty/amazonLead";
 import { warrantyLink } from "@/app/lib/warranty/link";
 
 export const dynamic = "force-dynamic";
@@ -14,12 +13,6 @@ export const dynamic = "force-dynamic";
 function value(form: FormData, key: string) {
   const v = form.get(key);
   return typeof v === "string" ? v.trim() : "";
-}
-
-function createLeadReference(amazonOrderId: string) {
-  // Keeps it short and still traceable back to the Amazon order.
-  const digits = amazonOrderId.replace(/\D/g, "").slice(-6) || String(randomInt(0, 1_000_000));
-  return `WAR-AMZ-${digits.padStart(6, "0")}`;
 }
 
 // Amit starts a certificate here for an Amazon buyer, since we may never
@@ -50,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(back, 303);
   }
 
-  const leadReference = createLeadReference(amazonOrderId);
+  const leadReference = amazonLeadReference(amazonOrderId);
   const lead: LeadRow = {
     date: new Date().toISOString(),
     name: fullName,
