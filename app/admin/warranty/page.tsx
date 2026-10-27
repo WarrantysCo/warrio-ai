@@ -20,6 +20,10 @@ export default async function WarrantyAdminPage() {
         the customer&apos;s device has a 2- or 3-year manufacturer warranty,
         change the date below and send again.
       </p>
+      <p className="mt-1 text-xs text-amber-700">
+        Certificates should go out within 24 hours of the customer sending
+        their details — rows waiting longer than that are marked in red below.
+      </p>
 
       <div className="mt-8 space-y-4">
         {queue.length === 0 && (
@@ -33,12 +37,16 @@ export default async function WarrantyAdminPage() {
           const planPurchaseDate = (row.payment?.date ?? details.date).slice(0, 10);
           const start = planStartDate(planPurchaseDate);
           const end = planEndDate(start, lead?.recommended_plan ? getTenure(lead) : 1);
+          const hoursWaiting = row.sent
+            ? null
+            : Math.floor((Date.now() - new Date(details.date).getTime()) / (60 * 60 * 1000));
+          const overdue = hoursWaiting !== null && hoursWaiting >= 24;
           return (
             <form
               key={row.lead_reference}
               action="/api/admin/warranty/send"
               method="post"
-              className="rounded-xl border border-slate-200 bg-white p-5 text-sm"
+              className={`rounded-xl border bg-white p-5 text-sm ${overdue ? "border-red-400" : "border-slate-200"}`}
             >
               <input type="hidden" name="leadReference" value={row.lead_reference} />
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -48,6 +56,15 @@ export default async function WarrantyAdminPage() {
                 {row.sent && (
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
                     Sent {new Date(row.sent.date).toLocaleDateString("en-IN")}
+                  </span>
+                )}
+                {!row.sent && hoursWaiting !== null && (
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      overdue ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {overdue ? `Overdue — waiting ${hoursWaiting}h` : `Waiting ${hoursWaiting}h`}
                   </span>
                 )}
               </div>

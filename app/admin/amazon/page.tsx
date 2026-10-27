@@ -34,10 +34,23 @@ export default async function AmazonOrderAdminPage({
           <div className="mt-1 break-all rounded-lg bg-white p-2 font-mono text-xs">{link}</div>
         </div>
       )}
+      {created && !link && (
+        <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <div className="font-bold">Order {created} added.</div>
+          <div className="mt-2">
+            No link needed — it is already in your{" "}
+            <a href="/admin/warranty" className="font-semibold underline">
+              certificate approval queue
+            </a>
+            .
+          </div>
+        </div>
+      )}
 
       <form
         action="/api/admin/amazon-order"
         method="post"
+        encType="multipart/form-data"
         className="mt-8 space-y-4 rounded-2xl border border-slate-200 bg-white p-6"
       >
         <label className="block">
@@ -80,8 +93,78 @@ export default async function AmazonOrderAdminPage({
           <span className="text-sm font-semibold">Date the customer bought the device (if known)</span>
           <input name="purchaseDate" type="date" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
         </label>
+
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+          <div className="text-sm font-bold text-slate-900">
+            Already have everything for this customer?
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Fill in email and serial number below, and it skips the customer link — goes
+            straight to your approval queue instead. Leave both blank to just get the link
+            to send through Amazon.
+          </p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-semibold">Customer email</span>
+              <input name="email" type="email" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Serial number / IMEI</span>
+              <input name="serialNumber" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Brand</span>
+              <input name="brand" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Model</span>
+              <input name="model" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-semibold">Device name</span>
+              <input name="deviceName" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Product invoice (optional)</span>
+              <input
+                type="file"
+                name="productInvoice"
+                accept="application/pdf,image/*"
+                className="mt-1 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-brand-blue"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Amazon plan order/invoice (optional)</span>
+              <input
+                type="file"
+                name="warrantyInvoice"
+                accept="application/pdf,image/*"
+                className="mt-1 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-brand-blue"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Device photo 1 (optional)</span>
+              <input
+                type="file"
+                name="conditionPhoto1"
+                accept="image/*"
+                className="mt-1 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-brand-blue"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold">Device photo 2 (optional)</span>
+              <input
+                type="file"
+                name="conditionPhoto2"
+                accept="image/*"
+                className="mt-1 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-brand-blue"
+              />
+            </label>
+          </div>
+        </div>
+
         <button type="submit" className="w-full rounded-xl bg-brand-blue py-3 font-bold text-white hover:bg-brand-blue-dark">
-          Create order and get the link
+          Create order
         </button>
       </form>
 
