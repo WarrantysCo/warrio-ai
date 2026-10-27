@@ -63,16 +63,39 @@ export default async function WarrantyAdminPage() {
                     {details.notes_for_team}
                   </div>
                 )}
-                {details.invoice_file && (
-                  <div className="sm:col-span-2">
-                    <a
-                      href={`/api/admin/warranty/invoice?file=${encodeURIComponent(details.invoice_file)}`}
-                      className="font-semibold text-brand-blue underline"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View uploaded bill
-                    </a>
+                {(details.invoice_file || details.warranty_invoice_file || details.condition_photos?.length) && (
+                  <div className="sm:col-span-2 flex flex-wrap gap-4">
+                    {details.invoice_file && (
+                      <a
+                        href={`/api/admin/warranty/invoice?file=${encodeURIComponent(details.invoice_file)}`}
+                        className="font-semibold text-brand-blue underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View product invoice
+                      </a>
+                    )}
+                    {details.warranty_invoice_file && (
+                      <a
+                        href={`/api/admin/warranty/invoice?file=${encodeURIComponent(details.warranty_invoice_file)}`}
+                        className="font-semibold text-brand-blue underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View Amazon plan order
+                      </a>
+                    )}
+                    {details.condition_photos?.map((photo, index) => (
+                      <a
+                        key={photo}
+                        href={`/api/admin/warranty/invoice?file=${encodeURIComponent(photo)}`}
+                        className="font-semibold text-brand-blue underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View photo {index + 1}
+                      </a>
+                    ))}
                   </div>
                 )}
               </div>

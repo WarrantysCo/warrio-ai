@@ -30,6 +30,10 @@ export type DetailsRecord = {
   serial_or_imei: string;
   device_purchase_date: string;
   invoice_file: string;
+  // Amazon claims only: the separate order/invoice for the warranty plan
+  // itself, and a couple of photos of the device for our own records.
+  warranty_invoice_file?: string;
+  condition_photos?: string[];
   notes_for_team: string;
 };
 
@@ -123,12 +127,14 @@ function invoicesDir() {
 
 export async function saveInvoiceFile(
   leadReference: string,
-  file: File
+  file: File,
+  label?: string
 ): Promise<string> {
   const extension =
     file.name.match(/\.(pdf|jpg|jpeg|png|webp|gif|heic|heif)$/i)?.[1]?.toLowerCase() ??
     (file.type === "application/pdf" ? "pdf" : file.type.split("/")[1] || "jpg");
-  const name = `${leadReference}-${Date.now()}.${extension}`;
+  const safeLabel = label?.replace(/[^a-zA-Z0-9]/g, "");
+  const name = `${leadReference}-${safeLabel ? `${safeLabel}-` : ""}${Date.now()}.${extension}`;
   await mkdir(/*turbopackIgnore: true*/ invoicesDir(), { recursive: true });
   await writeFile(
     /*turbopackIgnore: true*/ path.join(invoicesDir(), name),
