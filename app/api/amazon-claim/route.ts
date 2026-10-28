@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { rateLimited } from "@/app/lib/security/formRateLimit";
+
 import { isWithinPurchaseWindow, quotePlans } from "@/app/lib/agents/sales/pricing";
 import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
@@ -39,6 +41,9 @@ function closestPlan(categoryId: string, devicePriceInr: number, warrantyPriceIn
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimited(request, "/api/amazon-claim", 15, 10 * 60 * 1000);
+  if (limited) return limited;
+
   let form: FormData;
   try {
     form = await request.formData();

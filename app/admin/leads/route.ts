@@ -1,4 +1,4 @@
-import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
+import { adminAuthRequired, checkAdminPassword } from "@/app/lib/adminAuth";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 
 // Downloads every website lead as a CSV file that opens in Excel. The browser
@@ -14,7 +14,8 @@ function csvCell(value: unknown) {
 }
 
 export async function GET(request: Request) {
-  if (!isAdminAllowed(request)) return adminAuthRequired();
+  const adminCheck = checkAdminPassword(request);
+  if (adminCheck !== "ok") return adminAuthRequired(adminCheck);
 
   const leads = await readLeads();
   const columns = [

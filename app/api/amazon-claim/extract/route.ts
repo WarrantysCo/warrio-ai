@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { rateLimited } from "@/app/lib/security/formRateLimit";
+
 import { isSupportedInvoiceFile, MAX_INVOICE_UPLOAD_BYTES, toInvoiceUpload } from "@/app/lib/invoiceFile";
 import { extractAmazonInvoice } from "@/app/lib/warranty/extractAmazonInvoice";
 
@@ -8,6 +10,9 @@ export const dynamic = "force-dynamic";
 // Reads one uploaded invoice so the form can fill itself in. Best-effort:
 // errors never block the customer, they just mean more to type by hand.
 export async function POST(request: Request) {
+  const limited = rateLimited(request, "/api/amazon-claim/extract", 30, 10 * 60 * 1000);
+  if (limited) return limited;
+
   const form = await request.formData().catch(() => null);
   const kind = form?.get("kind");
   const fileEntry = form?.get("invoice");

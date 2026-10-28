@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
+import { adminAuthRequired, checkAdminPassword } from "@/app/lib/adminAuth";
 import { quotePlans } from "@/app/lib/agents/sales/pricing";
 import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
@@ -26,7 +26,8 @@ function file(form: FormData, key: string) {
 // Amazon) — the resulting link is meant to be sent through Amazon's own
 // Buyer-Seller Messaging, where the customer then gives us their own email.
 export async function POST(request: Request) {
-  if (!isAdminAllowed(request)) return adminAuthRequired();
+  const adminCheck = checkAdminPassword(request);
+  if (adminCheck !== "ok") return adminAuthRequired(adminCheck);
 
   const form = await request.formData();
   const amazonOrderId = value(form, "amazonOrderId");

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { rateLimited } from "@/app/lib/security/formRateLimit";
+
 import { isWithinPurchaseWindow } from "@/app/lib/agents/sales/pricing";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 import { isSupportedInvoiceFile, MAX_INVOICE_UPLOAD_BYTES } from "@/app/lib/invoiceFile";
@@ -20,6 +22,9 @@ function text(form: FormData, key: string, max = 200) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimited(request, "/api/warranty", 20, 10 * 60 * 1000);
+  if (limited) return limited;
+
   let form: FormData;
   try {
     form = await request.formData();
