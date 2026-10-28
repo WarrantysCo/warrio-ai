@@ -9,6 +9,7 @@ import SiteHeader from "./components/SiteHeader";
 import { contact } from "./data/contact";
 import { priceCategories } from "./data/priceList";
 import { getCategory, lowestPrice } from "./lib/agents/sales/pricing";
+import { reportFromBrowser } from "./lib/monitoring/reportFromBrowser";
 import type { PlanQuote, SalesAnalysis } from "./lib/agents/sales/types";
 
 type JourneyStep =
@@ -243,7 +244,12 @@ export default function Home() {
       setLeadReference(result.leadReference);
       setPaymentUrl(typeof result.paymentUrl === "string" ? result.paymentUrl : "");
       setJourneyStep("success");
-    } catch {
+    } catch (error) {
+      reportFromBrowser({
+        kind: "form_failed",
+        message: `Plan form could not be sent: ${error instanceof Error ? error.message : String(error)}`,
+        mobile: customerDetails.mobile.trim(),
+      });
       setLeadError("We could not create your request. Please try again.");
     } finally {
       setIsSubmittingLead(false);
@@ -361,7 +367,11 @@ export default function Home() {
             : "eligibility"
         );
       }
-    } catch {
+    } catch (error) {
+      reportFromBrowser({
+        kind: "form_failed",
+        message: `Warrio ${hasInvoice ? "bill upload" : "chat"} got no answer: ${error instanceof Error ? error.message : String(error)}`,
+      });
       if (hasInvoice) {
         setAnswer("Warrio couldn't review that invoice right now. Please try again.");
       } else {

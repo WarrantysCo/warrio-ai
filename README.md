@@ -44,6 +44,17 @@ JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Work
 | `N8N_LEADS_WEBHOOK_URL` | Optional. n8n Webhook URL that saves website leads |
 | `N8N_WEBHOOK_SECRET` | Optional. Sent as the `X-Warrio-Secret` header |
 | `HUBSPOT_ACCESS_TOKEN` | Optional. HubSpot private app token (scopes `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.objects.deals.write`); each lead becomes a contact plus a deal |
+| `ALERT_EMAIL` | Optional. Where problem alerts and the 9 am daily check go (default `business@warrantys.co`); sent through `GMAIL_USER`/`GMAIL_APP_PASSWORD`. `ALERT_EMAILS=off` stops them |
+| `RAZORPAY_WEBHOOK_SECRET` | Optional. Secret of the Razorpay webhook pointing at `/api/razorpay/webhook` (events `payment_link.paid`, `payment.failed`), so payments are recorded even if the customer closes the page |
+
+## Monitoring
+
+Every error a customer hits, on our server (`instrumentation.ts`) or in their
+browser (`instrumentation-client.ts`, `app/error.tsx`, form failures), is
+saved to `problems.jsonl` next to the leads and listed on `/admin/problems`,
+with at most one alert email per kind of problem every 30 minutes. The same
+page lists customers who got stuck (`app/lib/monitoring/stuck.ts`), and a
+daily email at 9 am India time sums them up. `/admin` is the dashboard.
 
 ## Run locally
 

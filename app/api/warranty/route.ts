@@ -9,6 +9,7 @@ import {
   saveInvoiceFile,
   saveWarrantyRecord,
 } from "@/app/lib/warranty/store";
+import { reportProblem } from "@/app/lib/monitoring/problems";
 
 // Takes the details a paid customer sends from their "complete your warranty"
 // page: the bill plus what the certificate prints (device, serial, dates).
@@ -78,7 +79,13 @@ export async function POST(request: Request) {
     try {
       invoiceFile = await saveInvoiceFile(leadReference, invoice);
     } catch (error) {
-      console.error("Saving invoice failed:", error instanceof Error ? error.message : error);
+      await reportProblem({
+        kind: "saving_failed",
+        where: "/warranty form",
+        message: `Could not save the bill: ${error instanceof Error ? error.message : String(error)}`,
+        lead_reference: leadReference,
+        mobile: details.mobile,
+      });
       return NextResponse.json(
         { success: false, message: "We could not save your bill. Please try again." },
         { status: 500 }
@@ -102,6 +109,13 @@ export async function POST(request: Request) {
     notes_for_team: notes.join(" "),
   });
   if (!saved) {
+    await reportProblem({
+      kind: "saving_failed",
+      where: "/warranty form",
+      message: "Could not save the customer's device details.",
+      lead_reference: leadReference,
+      mobile: details.mobile,
+    });
     return NextResponse.json(
       { success: false, message: "We could not save your details. Please try again." },
       { status: 500 }
