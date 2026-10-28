@@ -10,6 +10,7 @@ import {
 import { getCategoryByName } from "@/app/lib/agents/sales/pricing";
 import { categoryNames } from "@/app/lib/agents/sales/instructions";
 import type { InvoiceUpload } from "@/app/lib/invoiceFile";
+import { reportProblem } from "@/app/lib/monitoring/problems";
 
 // Reads one invoice (the device's own purchase bill, or the Amazon order for
 // the Warrantys.co plan) with Gemini, so the customer barely has to type
@@ -96,7 +97,11 @@ export async function extractAmazonInvoice(
       priceInr: price !== null && price > 0 ? Math.round(price) : null,
     };
   } catch (error) {
-    console.error("Invoice extraction failed:", error instanceof Error ? error.message : error);
+    await reportProblem({
+      kind: "warrio_ai",
+      where: "/amazon-claim bill reading",
+      message: `Could not read an uploaded bill (customer can still type it in): ${error instanceof Error ? error.message : String(error)}`,
+    });
     return { error: "We could not read that file. Please fill in the details yourself." };
   } finally {
     if (cleanup) await cleanup();

@@ -17,7 +17,7 @@ export default async function WarrantyAdminPage({
   const leadByRef = new Map(leads.map((lead) => [lead.lead_reference, lead]));
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10 text-slate-900">
+    <main className="mx-auto max-w-5xl px-6 py-8 text-slate-900">
       <h1 className="text-2xl font-black">Warranty certificates</h1>
       <p className="mt-1 text-sm text-slate-600">
         Customers who sent their details, newest first. Check the dates, then

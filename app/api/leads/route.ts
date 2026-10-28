@@ -13,6 +13,7 @@ import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
 import { createPaymentLink } from "@/app/lib/integrations/razorpay";
+import { reportProblem } from "@/app/lib/monitoring/problems";
 import { warrantyLink } from "@/app/lib/warranty/link";
 import {
   isSupportedInvoiceFile,
@@ -165,6 +166,15 @@ export async function POST(request: Request) {
       sendLeadToN8n(lead),
       sendLeadToHubSpot(leadWithLink),
     ]);
+    if (!saved) {
+      await reportProblem({
+        kind: "saving_failed",
+        where: "/api/leads",
+        message: "The order was not saved on our server (see leads.jsonl).",
+        lead_reference: leadReference,
+        mobile,
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -182,7 +192,12 @@ export async function POST(request: Request) {
         invoiceStatus: invoice ? "received" : billLater ? "bill_later" : "not_uploaded",
       },
     });
-  } catch {
+  } catch (error) {
+    await reportProblem({
+      kind: "form_failed",
+      where: "/api/leads",
+      message: `Plan form crashed: ${error instanceof Error ? error.message : String(error)}`,
+    });
     return NextResponse.json(
       { success: false, message: "We could not validate your request." },
       { status: 400 }

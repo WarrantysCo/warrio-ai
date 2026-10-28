@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { LeadRow } from "@/app/lib/integrations/n8n";
+import { reportProblem } from "@/app/lib/monitoring/problems";
 
 // Puts each website lead into HubSpot (free CRM): the customer as a contact
 // (matched by email, or by mobile when there is no email, so a returning
@@ -123,10 +124,13 @@ export async function sendLeadToHubSpot(
     });
     return "sent";
   } catch (error) {
-    console.error(
-      "HubSpot lead error:",
-      error instanceof Error ? error.message : error
-    );
+    await reportProblem({
+      kind: "hubspot",
+      where: "/api/leads",
+      message: `Lead not saved in HubSpot: ${error instanceof Error ? error.message : String(error)}`,
+      lead_reference: lead.lead_reference,
+      mobile: lead.mobile,
+    });
     return "failed";
   }
 }
@@ -175,10 +179,12 @@ export async function logCertificateEmailToHubSpot(options: {
     });
     return "sent";
   } catch (error) {
-    console.error(
-      "HubSpot certificate email log error:",
-      error instanceof Error ? error.message : error
-    );
+    await reportProblem({
+      kind: "hubspot",
+      where: "/admin/warranty",
+      message: `Certificate email not logged in HubSpot: ${error instanceof Error ? error.message : String(error)}`,
+      mobile: options.mobile,
+    });
     return "failed";
   }
 }

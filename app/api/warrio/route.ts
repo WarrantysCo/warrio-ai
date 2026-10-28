@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { reportProblem } from "@/app/lib/monitoring/problems";
+
 import { handleCustomerRequest } from "@/app/lib/agents/ceo";
 import {
   isSupportedInvoiceFile,
@@ -78,7 +80,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Warrio API error:", error instanceof Error ? error.message : error);
+    await reportProblem({
+      kind: "warrio_ai",
+      where: "/api/warrio",
+      message: `Warrio crashed: ${error instanceof Error ? error.message : String(error)}`,
+    });
 
     return NextResponse.json(
       {

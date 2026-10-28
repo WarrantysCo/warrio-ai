@@ -7,6 +7,7 @@ import type { LeadRow } from "@/app/lib/integrations/n8n";
 import { isSupportedInvoiceFile, MAX_INVOICE_UPLOAD_BYTES } from "@/app/lib/invoiceFile";
 import { amazonLeadReference } from "@/app/lib/warranty/amazonLead";
 import { readWarrantyStatus, saveInvoiceFile, saveWarrantyRecord } from "@/app/lib/warranty/store";
+import { reportProblem } from "@/app/lib/monitoring/problems";
 
 export const dynamic = "force-dynamic";
 
@@ -166,13 +167,26 @@ export async function POST(request: Request) {
       }),
     ]);
     if (!leadSaved || !detailsSaved) {
+      await reportProblem({
+        kind: "saving_failed",
+        where: "/amazon-claim",
+        message: "Could not save the Amazon claim details.",
+        lead_reference: leadReference,
+        mobile: details.mobile,
+      });
       return NextResponse.json(
         { success: false, message: "We could not save your details. Please try again." },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("Saving Amazon claim failed:", error instanceof Error ? error.message : error);
+    await reportProblem({
+      kind: "saving_failed",
+      where: "/amazon-claim",
+      message: `Could not save the claim files: ${error instanceof Error ? error.message : String(error)}`,
+      lead_reference: leadReference,
+      mobile: details.mobile,
+    });
     return NextResponse.json(
       { success: false, message: "We could not save your files. Please try again." },
       { status: 500 }

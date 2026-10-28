@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 
+import { reportFromBrowser } from "@/app/lib/monitoring/reportFromBrowser";
+
 type Details = {
   fullName: string;
   mobile: string;
@@ -81,12 +83,28 @@ export default function WarrantyForm({
       const response = await fetch("/api/warranty", { method: "POST", body });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) {
+        // 502-504 come from Hostinger in front of the site, so our own server
+        // never saw the request and could not report it itself.
+        if (response.status >= 502) {
+          reportFromBrowser({
+            kind: "form_failed",
+            message: `Warranty details form got error ${response.status}`,
+            leadReference,
+            mobile: details.mobile,
+          });
+        }
         setError(result.message || "Something went wrong. Please try again.");
         return;
       }
       setDone(true);
       setEditing(false);
-    } catch {
+    } catch (error) {
+      reportFromBrowser({
+        kind: "form_failed",
+        message: `Warranty details form could not reach the server: ${error instanceof Error ? error.message : String(error)}`,
+        leadReference,
+        mobile: details.mobile,
+      });
       setError("We could not reach our server. Please check your internet and try again.");
     } finally {
       setSending(false);

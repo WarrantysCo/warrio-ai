@@ -12,7 +12,7 @@ export default async function AmazonOrderAdminPage({
   const leads = (await readLeads()).filter((lead) => lead.source === "amazon").reverse();
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10 text-slate-900">
+    <main className="mx-auto max-w-3xl px-6 py-8 text-slate-900">
       <h1 className="text-2xl font-black">Start a certificate for an Amazon order</h1>
       <p className="mt-1 text-sm text-slate-600">
         Type in the order details below. We never email or WhatsApp Amazon

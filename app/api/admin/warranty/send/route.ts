@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
 import { logCertificateEmailToHubSpot } from "@/app/lib/integrations/hubspot";
 import { readLeads } from "@/app/lib/integrations/leadStore";
+import { reportProblem } from "@/app/lib/monitoring/problems";
 import { buildCertificatePdf } from "@/app/lib/warranty/certificate";
 import { sendCertificateEmail } from "@/app/lib/warranty/email";
 import { siteUrl } from "@/app/lib/warranty/link";
@@ -61,6 +62,16 @@ export async function POST(request: Request) {
     pdf,
     fileName: `Warrantys.co-${leadReference}.pdf`,
   });
+
+  if (!result.ok) {
+    await reportProblem({
+      kind: "certificate_email",
+      where: "/admin/warranty",
+      message: result.error ?? "unknown",
+      lead_reference: leadReference,
+      mobile: details.mobile || lead.mobile,
+    });
+  }
 
   if (result.ok) {
     const sentAt = Date.now();

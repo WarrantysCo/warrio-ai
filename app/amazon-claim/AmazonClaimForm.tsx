@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 
+import { reportFromBrowser } from "@/app/lib/monitoring/reportFromBrowser";
+
 type Category = { id: string; name: string; icon: string };
 
 const inputClass =
@@ -140,11 +142,25 @@ export default function AmazonClaimForm({ categories }: { categories: Category[]
       const response = await fetch("/api/amazon-claim", { method: "POST", body });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
+        // 502-504 come from Hostinger in front of the site, so our own server
+        // never saw the request and could not report it itself.
+        if (response.status >= 502) {
+          reportFromBrowser({
+            kind: "form_failed",
+            message: `Amazon claim form got error ${response.status}`,
+            mobile: String(body.get("mobile") ?? ""),
+          });
+        }
         setError(data.message || "Something went wrong. Please try again.");
         return;
       }
       setResult({ leadReference: data.leadReference, email: String(body.get("email") ?? "") });
-    } catch {
+    } catch (error) {
+      reportFromBrowser({
+        kind: "form_failed",
+        message: `Amazon claim form could not reach the server: ${error instanceof Error ? error.message : String(error)}`,
+        mobile: String(body.get("mobile") ?? ""),
+      });
       setError("We could not reach our server. Please check your internet and try again.");
     } finally {
       setSending(false);

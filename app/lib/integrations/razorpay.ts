@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { reportProblem } from "@/app/lib/monitoring/problems";
+
 // Makes a Razorpay payment link for one order, the same way the n8n workflow
 // does. Needs RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET; without them, or if
 // Razorpay refuses, it returns null and the customer is sent to WhatsApp.
@@ -64,19 +66,24 @@ export async function createPaymentLink(
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || typeof result.short_url !== "string") {
-      console.error(
-        "Razorpay payment link failed:",
-        response.status,
-        result?.error?.description ?? ""
-      );
+      await reportProblem({
+        kind: "payment_link",
+        where: "/api/leads",
+        message: `Razorpay said ${response.status}: ${result?.error?.description ?? "no reason given"}`,
+        lead_reference: order.leadReference,
+        mobile: order.mobile,
+      });
       return null;
     }
     return /^https:\/\//.test(result.short_url) ? result.short_url : null;
   } catch (error) {
-    console.error(
-      "Razorpay payment link error:",
-      error instanceof Error ? error.message : error
-    );
+    await reportProblem({
+      kind: "payment_link",
+      where: "/api/leads",
+      message: `Could not reach Razorpay: ${error instanceof Error ? error.message : String(error)}`,
+      lead_reference: order.leadReference,
+      mobile: order.mobile,
+    });
     return null;
   }
 }
