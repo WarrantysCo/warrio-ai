@@ -21,7 +21,8 @@ export type ProblemKind =
   | "saving_failed"
   | "certificate_email"
   | "warrio_ai"
-  | "hubspot";
+  | "hubspot"
+  | "security";
 
 export type ProblemRecord = {
   date: string;
@@ -46,6 +47,7 @@ export const PROBLEM_LABELS: Record<ProblemKind, string> = {
   certificate_email: "Certificate email failed",
   warrio_ai: "Warrio AI could not answer or read the bill",
   hubspot: "Could not save to HubSpot",
+  security: "Someone was blocked for too many tries",
 };
 
 // One email per kind of problem per half hour, so a breakdown hitting 1000

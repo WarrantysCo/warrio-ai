@@ -1,4 +1,4 @@
-import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
+import { adminAuthRequired, checkAdminPassword } from "@/app/lib/adminAuth";
 import { readInvoiceFile } from "@/app/lib/warranty/store";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 // Lets the admin view a customer's uploaded bill. The file name is checked
 // against a strict pattern in readInvoiceFile, so it can't read other files.
 export async function GET(request: Request) {
-  if (!isAdminAllowed(request)) return adminAuthRequired();
+  const adminCheck = checkAdminPassword(request);
+  if (adminCheck !== "ok") return adminAuthRequired(adminCheck);
 
   const fileName = new URL(request.url).searchParams.get("file") ?? "";
   const data = await readInvoiceFile(fileName);

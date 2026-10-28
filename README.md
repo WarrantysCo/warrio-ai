@@ -47,6 +47,14 @@ JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Work
 | `ALERT_EMAIL` | Optional. Where problem alerts and the 9 am daily check go (default `business@warrantys.co`); sent through `GMAIL_USER`/`GMAIL_APP_PASSWORD`. `ALERT_EMAILS=off` stops them |
 | `RAZORPAY_WEBHOOK_SECRET` | Optional. Secret of the Razorpay webhook pointing at `/api/razorpay/webhook` (events `payment_link.paid`, `payment.failed`), so payments are recorded even if the customer closes the page |
 
+## Security
+
+The admin password locks an address out for 15 minutes after 8 wrong tries
+(`app/lib/adminAuth.ts`), and every public form (`/api/leads`, `/api/warranty`,
+`/api/amazon-claim`, `/api/amazon-claim/extract`, `/api/warrio`) is rate
+limited per address (`app/lib/security/`), so a flood or a script cannot run
+up Amit's bill or inbox. Both report to `/admin/problems` when triggered.
+
 ## Monitoring
 
 Every error a customer hits, on our server (`instrumentation.ts`) or in their

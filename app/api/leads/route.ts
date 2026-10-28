@@ -14,6 +14,7 @@ import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
 import { createPaymentLink } from "@/app/lib/integrations/razorpay";
 import { reportProblem } from "@/app/lib/monitoring/problems";
+import { rateLimited } from "@/app/lib/security/formRateLimit";
 import { warrantyLink } from "@/app/lib/warranty/link";
 import {
   isSupportedInvoiceFile,
@@ -41,6 +42,9 @@ function createLeadReference() {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimited(request, "/api/leads", 15, 10 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const contentType = request.headers.get("content-type") || "";
     let values: FormData | Record<string, unknown>;

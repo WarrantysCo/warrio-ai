@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
+import { adminAuthRequired, checkAdminPassword } from "@/app/lib/adminAuth";
 import { logCertificateEmailToHubSpot } from "@/app/lib/integrations/hubspot";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 import { reportProblem } from "@/app/lib/monitoring/problems";
@@ -17,7 +17,8 @@ function getTenure(planName: string) {
 }
 
 export async function POST(request: Request) {
-  if (!isAdminAllowed(request)) return adminAuthRequired();
+  const adminCheck = checkAdminPassword(request);
+  if (adminCheck !== "ok") return adminAuthRequired(adminCheck);
 
   const form = await request.formData();
   const leadReference = String(form.get("leadReference") ?? "").trim();

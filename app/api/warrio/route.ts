@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { reportProblem } from "@/app/lib/monitoring/problems";
+import { rateLimited } from "@/app/lib/security/formRateLimit";
 
 import { handleCustomerRequest } from "@/app/lib/agents/ceo";
 import {
@@ -15,6 +16,9 @@ function getTextField(formData: FormData, key: string) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimited(request, "/api/warrio", 40, 10 * 60 * 1000);
+  if (limited) return limited;
+
   try {
     const contentType = request.headers.get("content-type") || "";
 
