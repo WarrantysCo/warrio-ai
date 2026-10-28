@@ -4,8 +4,16 @@ import { readWarrantyQueue } from "@/app/lib/warranty/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function WarrantyAdminPage() {
-  const [queue, leads] = await Promise.all([readWarrantyQueue(), readLeads()]);
+export default async function WarrantyAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sent?: string; error?: string; reason?: string }>;
+}) {
+  const [{ sent, error, reason }, queue, leads] = await Promise.all([
+    searchParams,
+    readWarrantyQueue(),
+    readLeads(),
+  ]);
   const leadByRef = new Map(leads.map((lead) => [lead.lead_reference, lead]));
 
   return (
@@ -15,6 +23,17 @@ export default async function WarrantyAdminPage() {
         Customers who sent their details, newest first. Check the dates, then
         approve to email the certificate and log it in HubSpot.
       </p>
+      {sent && (
+        <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+          Certificate emailed for {sent}.
+        </div>
+      )}
+      {error && (
+        <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">
+          Could not email the certificate for {error}
+          {reason ? `: ${reason}` : "."}
+        </div>
+      )}
       <p className="mt-2 text-xs text-amber-700">
         Plan start date defaults to 1 year after the device&apos;s invoice
         date (the OEM warranty year). If the customer&apos;s device has a

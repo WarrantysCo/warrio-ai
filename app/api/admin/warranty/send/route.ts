@@ -5,6 +5,7 @@ import { logCertificateEmailToHubSpot } from "@/app/lib/integrations/hubspot";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 import { buildCertificatePdf } from "@/app/lib/warranty/certificate";
 import { sendCertificateEmail } from "@/app/lib/warranty/email";
+import { siteUrl } from "@/app/lib/warranty/link";
 import { readWarrantyStatus, saveWarrantyRecord } from "@/app/lib/warranty/store";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,11 @@ export async function POST(request: Request) {
   const planStartDate = String(form.get("planStartDate") ?? "").trim();
   const planEndDate = String(form.get("planEndDate") ?? "").trim();
 
-  const back = new URL("/admin/warranty", request.url);
+  // Built from SITE_URL, not request.url: behind Hostinger's proxy the raw
+  // request URL can be the server's own bind address (0.0.0.0:3000), which
+  // sent Amit's browser to an unreachable address instead of back to the
+  // admin page.
+  const back = new URL("/admin/warranty", siteUrl());
   if (!leadReference) return NextResponse.redirect(back, 303);
 
   const lead = (await readLeads()).findLast((row) => row.lead_reference === leadReference);
@@ -79,5 +84,6 @@ export async function POST(request: Request) {
   }
 
   back.searchParams.set(result.ok ? "sent" : "error", leadReference);
+  if (!result.ok && result.error) back.searchParams.set("reason", result.error);
   return NextResponse.redirect(back, 303);
 }
