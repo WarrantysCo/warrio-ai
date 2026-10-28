@@ -34,7 +34,11 @@ export async function sendCertificateEmail(options: {
     });
     return { ok: true };
   } catch (error) {
-    console.error("Certificate email failed:", error instanceof Error ? error.message : error);
-    return { ok: false, error: "Could not send the email." };
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Certificate email failed:", message);
+    // Show Gmail's own reason (e.g. "Invalid login", "Username and Password
+    // not accepted") on the admin page so a failed send can be diagnosed
+    // without server log access. Never contains the app password itself.
+    return { ok: false, error: message.slice(0, 200) };
   }
 }
