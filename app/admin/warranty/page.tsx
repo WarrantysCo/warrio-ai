@@ -16,9 +16,10 @@ export default async function WarrantyAdminPage() {
         approve to email the certificate and log it in HubSpot.
       </p>
       <p className="mt-2 text-xs text-amber-700">
-        Plan start date defaults to 1 year after the plan was purchased. If
-        the customer&apos;s device has a 2- or 3-year manufacturer warranty,
-        change the date below and send again.
+        Plan start date defaults to 1 year after the device&apos;s invoice
+        date (the OEM warranty year). If the customer&apos;s device has a
+        2- or 3-year manufacturer warranty, change the date below and send
+        again.
       </p>
       <p className="mt-1 text-xs text-amber-700">
         Certificates should go out within 24 hours of the customer sending
@@ -34,8 +35,7 @@ export default async function WarrantyAdminPage() {
         {queue.map((row) => {
           const lead = leadByRef.get(row.lead_reference);
           const details = row.details!;
-          const planPurchaseDate = (row.payment?.date ?? details.date).slice(0, 10);
-          const start = planStartDate(planPurchaseDate);
+          const start = planStartDate(details.device_purchase_date);
           const end = planEndDate(start, lead?.recommended_plan ? getTenure(lead) : 1);
           const hoursWaiting = row.sent
             ? null

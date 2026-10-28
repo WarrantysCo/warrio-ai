@@ -35,12 +35,14 @@ function formatDate(isoDate: string) {
   return `${day}${suffix} ${month} ${date.getUTCFullYear()}`;
 }
 
-// Confirmed by Amit (2026-10-27): the plan starts 1 year after the plan was
-// purchased (the manufacturer's own warranty year), not the device purchase
-// date. If a customer's manufacturer warranty is actually 2 or 3 years, Amit
-// edits the date on the approval page and resends the certificate.
-export function planStartDate(planPurchaseDate: string) {
-  const date = new Date(`${planPurchaseDate}T00:00:00Z`);
+// Corrected by Amit (2026-10-28): the device's own (OEM) warranty runs for
+// 1 year from the date on the purchase invoice, so Warrantys.co coverage
+// starts the day that OEM year ends — invoice date + 1 year, not the date
+// the Warrantys.co plan itself was purchased. If a customer's manufacturer
+// warranty is actually 2 or 3 years, Amit edits the date on the approval
+// page and resends the certificate.
+export function planStartDate(devicePurchaseDate: string) {
+  const date = new Date(`${devicePurchaseDate}T00:00:00Z`);
   date.setUTCFullYear(date.getUTCFullYear() + 1);
   return date.toISOString().slice(0, 10);
 }
