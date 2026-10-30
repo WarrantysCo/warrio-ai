@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { isChunkLoadError, reloadForChunkError } from "@/app/lib/monitoring/chunkReload";
 import { reportFromBrowser } from "@/app/lib/monitoring/reportFromBrowser";
 
 // Last resort when even the site's frame fails to load. It cannot use the
@@ -14,6 +15,11 @@ export default function GlobalError({
   retry: () => void;
 }) {
   useEffect(() => {
+    // After a deploy, a visitor's already-open tab can ask for a JS file
+    // from the old build and fail. A reload fetches the current build and
+    // just works, so do that instead of showing an error screen.
+    if (isChunkLoadError(error) && reloadForChunkError()) return;
+
     reportFromBrowser({
       kind: "page_crash",
       message: error.digest ? `${error.message} (server code ${error.digest})` : error.message,
