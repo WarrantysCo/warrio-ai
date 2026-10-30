@@ -6,13 +6,18 @@ import { reportFromBrowser } from "@/app/lib/monitoring/reportFromBrowser";
 
 function isNoise(message: string) {
   // "Script error." comes from other sites' scripts and browser extensions and
-  // carries no detail; ResizeObserver warnings are harmless.
+  // carries no detail; ResizeObserver warnings are harmless. window.ethereum
+  // is injected by crypto-wallet extensions (MetaMask etc.) into every site a
+  // visitor opens, nothing to do with our pages, and a buggy extension's own
+  // error still shows up as if it came from here.
   return (
     !message ||
     message === "Script error." ||
     message.includes("ResizeObserver loop") ||
     message.includes("chrome-extension://") ||
-    message.includes("moz-extension://")
+    message.includes("moz-extension://") ||
+    message.includes("window.ethereum") ||
+    message.includes("ethereum.selectedAddress")
   );
 }
 
