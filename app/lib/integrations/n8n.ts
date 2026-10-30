@@ -28,7 +28,7 @@ export type LeadRow = {
   notes_for_team: string;
   warrio_reply: string;
   status: string;
-  source: "website";
+  source: "website" | "amazon";
   lead_reference: string;
 };
 

@@ -10,6 +10,7 @@ import {
   prepareInvoicePart,
 } from "../../ai/gemini";
 import type { InvoiceUpload } from "../../invoiceFile";
+import { reportProblem } from "../../monitoring/problems";
 import { buildVerifiedDataBlock } from "../knowledge";
 import type { AgentRequest, AgentResponse, WarrioAgent } from "../types";
 import {
@@ -224,7 +225,11 @@ export async function analyzeInvoice(input: {
 
     return { success: true, agent: "sales", message: reply, analysis };
   } catch (error) {
-    console.error("Sales invoice error:", getErrorMessage(error));
+    await reportProblem({
+      kind: "warrio_ai",
+      where: "Warrio bill reading",
+      message: `Could not read a customer's bill: ${getErrorMessage(error)}`,
+    });
     return { success: false, agent: "sales", message: AI_UNAVAILABLE_MESSAGE };
   } finally {
     if (cleanup) await cleanup();
@@ -265,7 +270,11 @@ async function answerQuestion(request: AgentRequest): Promise<AgentResponse> {
 
     return { success: true, agent: "sales", message: result.response.text() };
   } catch (error) {
-    console.error("Sales chat error:", getErrorMessage(error));
+    await reportProblem({
+      kind: "warrio_ai",
+      where: "Warrio chat",
+      message: `Could not answer a customer: ${getErrorMessage(error)}`,
+    });
     return { success: false, agent: "sales", message: AI_UNAVAILABLE_MESSAGE };
   }
 }

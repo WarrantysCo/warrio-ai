@@ -9,7 +9,12 @@ import {
   quotePlans,
 } from "@/app/lib/agents/sales/pricing";
 import type { SalesAnalysis } from "@/app/lib/agents/sales/types";
-import { sendLeadToN8n } from "@/app/lib/integrations/n8n";
+import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
+import { saveLead } from "@/app/lib/integrations/leadStore";
+import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
+import { createPaymentLink } from "@/app/lib/integrations/razorpay";
+import { reportProblem } from "@/app/lib/monitoring/problems";
+import { warrantyLink } from "@/app/lib/warranty/link";
 import {
   isSupportedInvoiceFile,
   MAX_INVOICE_UPLOAD_BYTES,
@@ -58,6 +63,9 @@ export async function POST(request: Request) {
     const consent = getValue(values, "consent") === "true";
     const email = getValue(values, "email");
     const mobile = getValue(values, "mobile");
+    // "Pay now, send bill later": only plan, price, name and mobile are known;
+    // the device details and eligibility are checked when the bill arrives.
+    const billLater = getValue(values, "billLater") === "true";
     const errors: string[] = [];
 
     if (!selectedPlan) {
@@ -74,19 +82,21 @@ export async function POST(request: Request) {
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       errors.push("A valid 10-digit mobile number is required.");
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Email is optional everywhere: customers give their mobile number first.
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.push("A valid email address is required.");
     }
-    if (!getValue(values, "brand")) errors.push("Brand is required.");
-    if (!getValue(values, "model")) errors.push("Model is required.");
-    if (!getValue(values, "serialNumber")) errors.push("Serial number is required.");
-    if (!purchaseDate) {
-      errors.push("Purchase date is required.");
-    } else if (
-      (daysSincePurchase(purchaseDate) ?? -1) < 0 ||
-      !isWithinPurchaseWindow(purchaseDate)
-    ) {
-      errors.push("The purchase date is outside the plan window.");
+    if (!billLater) {
+      if (!getValue(values, "brand")) errors.push("Brand is required.");
+      if (!getValue(values, "model")) errors.push("Model is required.");
+      if (!purchaseDate) {
+        errors.push("Purchase date is required.");
+      } else if (
+        (daysSincePurchase(purchaseDate) ?? -1) < 0 ||
+        !isWithinPurchaseWindow(purchaseDate)
+      ) {
+        errors.push("The purchase date is outside the plan window.");
+      }
     }
     if (!consent) errors.push("Consent is required to proceed.");
 
@@ -106,7 +116,7 @@ export async function POST(request: Request) {
     const leadReference = createLeadReference();
     const analysis = readAnalysis(getValue(values, "analysis"));
 
-    const n8n = await sendLeadToN8n({
+    const lead: LeadRow = {
       date: new Date().toISOString(),
       name: getValue(values, "fullName"),
       mobile,
@@ -123,31 +133,71 @@ export async function POST(request: Request) {
       model: getValue(values, "model"),
       serial_or_imei: getValue(values, "serialNumber"),
       price_inr: priceInr,
-      days_since_purchase: daysSincePurchase(purchaseDate),
+      days_since_purchase: purchaseDate ? daysSincePurchase(purchaseDate) : null,
       recommended_plan: selectedPlan.plan_name,
       plan_price_inr: selectedPlan.price_inr,
-      notes_for_team:
-        typeof analysis.notes_for_team === "string" ? analysis.notes_for_team : "",
+      notes_for_team: billLater
+        ? "Paid before sending the bill. Collect the bill within 7 days and check eligibility before starting the plan; refund in full if not eligible."
+        : typeof analysis.notes_for_team === "string"
+          ? analysis.notes_for_team
+          : "",
       warrio_reply: typeof analysis.reply === "string" ? analysis.reply : "",
-      status: "new",
+      status: billLater ? "bill_pending" : "new",
       source: "website",
       lead_reference: leadReference,
+    };
+
+    // The price comes from our own price list, never from the browser.
+    const paymentUrl = await createPaymentLink({
+      priceInr: selectedPlan.price_inr,
+      planName: selectedPlan.plan_name,
+      device: [lead.brand, lead.model].filter(Boolean).join(" ") || selectedPlan.category_name,
+      name: lead.name,
+      mobile,
+      email,
+      leadReference,
+      // After paying, the customer lands on the form for the certificate.
+      callbackUrl: warrantyLink(leadReference),
     });
+
+    const leadWithLink = { ...lead, payment_link: paymentUrl ?? "" };
+    const [saved, n8n, hubspot] = await Promise.all([
+      saveLead(leadWithLink),
+      sendLeadToN8n(lead),
+      sendLeadToHubSpot(leadWithLink),
+    ]);
+    if (!saved) {
+      await reportProblem({
+        kind: "saving_failed",
+        where: "/api/leads",
+        message: "The order was not saved on our server (see leads.jsonl).",
+        lead_reference: leadReference,
+        mobile,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       leadReference,
+      paymentUrl,
+      saved,
       n8n,
+      hubspot,
       order: {
         product: selectedPlan.category_name,
         planId: selectedPlan.id,
         tenureYears: selectedPlan.tenure_years,
         price: selectedPlan.price_inr,
         currency: "INR",
-        invoiceStatus: invoice ? "received" : "not_uploaded",
+        invoiceStatus: invoice ? "received" : billLater ? "bill_later" : "not_uploaded",
       },
     });
-  } catch {
+  } catch (error) {
+    await reportProblem({
+      kind: "form_failed",
+      where: "/api/leads",
+      message: `Plan form crashed: ${error instanceof Error ? error.message : String(error)}`,
+    });
     return NextResponse.json(
       { success: false, message: "We could not validate your request." },
       { status: 400 }

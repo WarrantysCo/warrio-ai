@@ -1,16 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 
+import GetPlanBox from "./components/GetPlanBox";
+import SiteFooter from "./components/SiteFooter";
+import SiteHeader from "./components/SiteHeader";
+
+import { contact } from "./data/contact";
 import { priceCategories } from "./data/priceList";
 import { getCategory, lowestPrice } from "./lib/agents/sales/pricing";
-import type { SalesAnalysis } from "./lib/agents/sales/types";
+import { reportFromBrowser } from "./lib/monitoring/reportFromBrowser";
+import type { PlanQuote, SalesAnalysis } from "./lib/agents/sales/types";
 
 type JourneyStep =
   | "chat"
   | "recommendation"
   | "options"
   | "eligibility"
+  | "payLater"
   | "details"
   | "summary"
   | "success";
@@ -70,6 +77,13 @@ const products = [
   },
 ];
 
+// Other pages link to /#ask to open the chat straight away.
+const subscribeToHash = (onChange: () => void) => {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+};
+const isAskHash = () => window.location.hash === "#ask";
+
 const quickQuestions = [
   "📎 Upload Invoice to Get Best Plan Options",
   "🔍 Check What's Covered",
@@ -82,24 +96,38 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const askedByLink = useSyncExternalStore(subscribeToHash, isAskHash, () => false);
+  const [askLinkDismissed, setAskLinkDismissed] = useState(false);
+  const isChatOpen = chatOpen || (askedByLink && !askLinkDismissed);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [answer, setAnswer] = useState("");
   const [isAnalyzingInvoice, setIsAnalyzingInvoice] = useState(false);
   const [invoiceAnalysis, setInvoiceAnalysis] =
     useState<SalesAnalysis | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  // Plan length the customer tapped before uploading the bill, so Warrio's
+  // options open with that plan already chosen.
+  const [preferredTenure, setPreferredTenure] = useState(0);
+  // Set when the customer chose "Pay now, send bill later".
+  const [payLater, setPayLater] = useState<{
+    quote: PlanQuote;
+    priceInr: number;
+  } | null>(null);
   const [journeyStep, setJourneyStep] = useState<JourneyStep>("chat");
   const [customerDetails, setCustomerDetails] =
     useState<CustomerDetails>(emptyCustomerDetails);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadReference, setLeadReference] = useState("");
+  const [paymentUrl, setPaymentUrl] = useState("");
   const [leadError, setLeadError] = useState("");
   const invoiceAnalysisRequestIdRef = useRef(0);
 
   const planOptions = invoiceAnalysis?.plan_options ?? [];
-  const selectedPlan = planOptions.find((plan) => plan.id === selectedPlanId);
+  const selectedPlan =
+    payLater?.quote ?? planOptions.find((plan) => plan.id === selectedPlanId);
   const productName =
+    payLater?.quote.category_name ??
     getCategory(invoiceAnalysis?.invoice.product_category ?? "")?.name ??
     "product";
 
@@ -124,7 +152,19 @@ export default function Home() {
     if (!mobilePattern.test(customerDetails.mobile.trim())) {
       errors.push("Please enter a valid 10-digit mobile number.");
     }
-    if (!emailPattern.test(customerDetails.email.trim())) {
+    if (payLater) {
+      // Device details come with the bill later; email is optional.
+      const email = customerDetails.email.trim();
+      if (email && !emailPattern.test(email)) {
+        errors.push("Please enter a valid email address.");
+      }
+      if (!customerDetails.consent) {
+        errors.push("Please confirm that you want to proceed with this plan.");
+      }
+      return errors;
+    }
+    const email = customerDetails.email.trim();
+    if (email && !emailPattern.test(email)) {
       errors.push("Please enter a valid email address.");
     }
     if (!customerDetails.brand.trim()) {
@@ -132,9 +172,6 @@ export default function Home() {
     }
     if (!customerDetails.model.trim()) {
       errors.push("Please enter the product model.");
-    }
-    if (!customerDetails.serialNumber.trim()) {
-      errors.push("Please enter the product serial number.");
     }
     if (!customerDetails.purchaseDate) {
       errors.push("Please enter the purchase date.");
@@ -177,16 +214,21 @@ export default function Home() {
       formData.append("fullName", customerDetails.fullName.trim());
       formData.append("mobile", customerDetails.mobile.trim());
       formData.append("email", customerDetails.email.trim());
-      formData.append("brand", customerDetails.brand.trim());
-      formData.append("model", customerDetails.model.trim());
-      formData.append("serialNumber", customerDetails.serialNumber.trim());
-      formData.append("purchaseDate", customerDetails.purchaseDate);
       formData.append("selectedPlanId", selectedPlan.id);
-      formData.append("priceInr", String(invoiceAnalysis?.invoice.price_inr ?? ""));
-      formData.append("analysis", JSON.stringify(invoiceAnalysis));
       formData.append("consent", String(customerDetails.consent));
 
-      if (invoiceFile) formData.append("invoice", invoiceFile, invoiceFile.name);
+      if (payLater) {
+        formData.append("billLater", "true");
+        formData.append("priceInr", String(payLater.priceInr));
+      } else {
+        formData.append("brand", customerDetails.brand.trim());
+        formData.append("model", customerDetails.model.trim());
+        formData.append("serialNumber", customerDetails.serialNumber.trim());
+        formData.append("purchaseDate", customerDetails.purchaseDate);
+        formData.append("priceInr", String(invoiceAnalysis?.invoice.price_inr ?? ""));
+        formData.append("analysis", JSON.stringify(invoiceAnalysis));
+        if (invoiceFile) formData.append("invoice", invoiceFile, invoiceFile.name);
+      }
 
       const response = await fetch("/api/leads", {
         method: "POST",
@@ -200,8 +242,14 @@ export default function Home() {
       }
 
       setLeadReference(result.leadReference);
+      setPaymentUrl(typeof result.paymentUrl === "string" ? result.paymentUrl : "");
       setJourneyStep("success");
-    } catch {
+    } catch (error) {
+      reportFromBrowser({
+        kind: "form_failed",
+        message: `Plan form could not be sent: ${error instanceof Error ? error.message : String(error)}`,
+        mobile: customerDetails.mobile.trim(),
+      });
       setLeadError("We could not create your request. Please try again.");
     } finally {
       setIsSubmittingLead(false);
@@ -213,9 +261,13 @@ export default function Home() {
     setChatOpen(true);
   };
 
-  const submitQuestion = async () => {
+
+  // fileOverride lets a freshly picked invoice be reviewed straight away,
+  // before the invoiceFile state update has landed.
+  const submitQuestion = async (fileOverride?: File) => {
+    const invoice = fileOverride ?? invoiceFile;
     const trimmedQuestion = question.trim();
-    const hasInvoice = Boolean(invoiceFile);
+    const hasInvoice = Boolean(invoice);
     let requestId = 0;
 
     if (!trimmedQuestion && !hasInvoice) {
@@ -232,7 +284,7 @@ export default function Home() {
         ? ++invoiceAnalysisRequestIdRef.current
         : invoiceAnalysisRequestIdRef.current;
 
-      if (hasInvoice && invoiceFile) {
+      if (hasInvoice && invoice) {
         setIsAnalyzingInvoice(true);
         setAnswer("");
 
@@ -242,7 +294,7 @@ export default function Home() {
           trimmedQuestion ||
             "Please analyze this invoice and recommend the available warranty options."
         );
-        formData.append("invoice", invoiceFile, invoiceFile.name);
+        formData.append("invoice", invoice, invoice.name);
 
         if (selectedProduct) {
           formData.append("selectedProduct", selectedProduct);
@@ -295,7 +347,12 @@ export default function Home() {
 
         setInvoiceAnalysis(analysis);
         setSelectedProduct(getCategory(invoice.product_category)?.name || "");
-        setSelectedPlanId(analysis.recommended_plan_id || "");
+        setSelectedPlanId(
+          analysis.plan_options.find((plan) => plan.tenure_years === preferredTenure)
+            ?.id ||
+            analysis.recommended_plan_id ||
+            ""
+        );
         setCustomerDetails((current) => ({
           ...current,
           fullName: current.fullName || invoice.name_on_invoice || "",
@@ -310,7 +367,11 @@ export default function Home() {
             : "eligibility"
         );
       }
-    } catch {
+    } catch (error) {
+      reportFromBrowser({
+        kind: "form_failed",
+        message: `Warrio ${hasInvoice ? "bill upload" : "chat"} got no answer: ${error instanceof Error ? error.message : String(error)}`,
+      });
       if (hasInvoice) {
         setAnswer("Warrio couldn't review that invoice right now. Please try again.");
       } else {
@@ -323,62 +384,41 @@ export default function Home() {
     }
   };
 
+  // Picking an invoice anywhere on the page opens Warrio and starts the review.
+  const reviewInvoice = (file: File | null) => {
+    setInvoiceFile(file);
+    if (!file) return;
+    setPayLater(null);
+    setChatOpen(true);
+    setJourneyStep("chat");
+    setInvoiceAnalysis(null);
+    setFormErrors([]);
+    setLeadError("");
+    void submitQuestion(file);
+  };
+
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-2xl shadow-lg shadow-blue-600/30">
-              🛡️
-            </div>
-            <div>
-              <div className="text-xl font-bold tracking-tight">Warrio AI</div>
-              <div className="text-xs text-slate-400">
-                Your Warranty Warrior
-              </div>
-            </div>
-          </div>
-
-          <nav className="hidden items-center gap-8 md:flex">
-            <a href="#protect" className="text-sm text-slate-300 hover:text-white">
-              Protect My Product
-            </a>
-            <a href="#how" className="text-sm text-slate-300 hover:text-white">
-              How It Works
-            </a>
-            <a href="#support" className="text-sm text-slate-300 hover:text-white">
-              Support
-            </a>
-          </nav>
-
-          <button
-            type="button"
-            onClick={() => openWarrio()}
-            className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-blue-600/20 transition hover:bg-blue-500"
-          >
-            Ask Warrio
-          </button>
-        </div>
-      </header>
+    <main className="min-h-screen bg-white text-slate-900">
+      <SiteHeader onAskWarrio={() => openWarrio()} />
 
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.28),transparent_45%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,139,232,0.14),transparent_45%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-12 lg:grid-cols-2 lg:items-center lg:py-16">
           <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-sm text-blue-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-4 py-2 text-sm font-semibold text-brand-green-dark">
+              <span className="h-2 w-2 rounded-full bg-brand-green-dark" />
               AI-powered warranty assistance
             </div>
 
             <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
               Protect what you own.
-              <span className="block text-blue-400">
+              <span className="block text-brand-blue">
                 Let Warrio handle the rest.
               </span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-700">
               Get help understanding your warranty, protect eligible products,
               register your purchase and get claim assistance - all from one
               intelligent warranty platform.
@@ -388,7 +428,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio("I want to protect my product")}
-                className="rounded-2xl bg-blue-600 px-7 py-4 font-bold shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
+                className="rounded-2xl bg-brand-blue px-7 py-4 font-bold shadow-xl shadow-brand-blue/20 transition hover:-translate-y-0.5 hover:bg-brand-blue-dark text-white"
               >
                 🛡️ Protect My Product
               </button>
@@ -396,67 +436,51 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio()}
-                className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4 font-bold backdrop-blur transition hover:bg-white/10"
+                className="rounded-2xl border border-slate-300 bg-slate-50 px-7 py-4 font-bold backdrop-blur transition hover:bg-slate-100"
               >
                 🤖 Ask Warrio
               </button>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-400">
+            <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-600">
               <span>✓ Warranty assistance</span>
               <span>✓ Product registration</span>
               <span>✓ Claim support</span>
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-lg">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-blue-950/40 backdrop-blur-xl">
-              <div className="flex items-center gap-4 border-b border-white/10 pb-5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-3xl">
-                  🛡️
-                </div>
-
-                <div>
-                  <div className="font-bold">Warrio AI</div>
-                  <div className="flex items-center gap-2 text-sm text-emerald-400">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                    Ready to help
-                  </div>
-                </div>
-              </div>
-
-              <div className="py-6">
-                <div className="max-w-sm rounded-2xl rounded-tl-sm bg-slate-800 p-4 text-sm leading-6 text-slate-200">
-                  Hi! I&apos;m Warrio. 👋
-                  <br />
-                  <br />
-                  Tell me what product you want to protect or what warranty
-                  question you have.
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => openWarrio()}
-                className="w-full rounded-2xl bg-blue-600 py-4 font-bold transition hover:bg-blue-500"
-              >
-                Start Conversation →
-              </button>
-            </div>
+          {/* On phones the plan box comes first, so customers can start straight away. */}
+          <div className="order-first mx-auto w-full max-w-lg lg:order-none">
+            <GetPlanBox
+              onInvoice={reviewInvoice}
+              onSelectProduct={(productName, tenureYears) => {
+                setSelectedProduct(productName);
+                setSelectedPlanId("");
+                setPreferredTenure(tenureYears);
+              }}
+              onPayLater={(quote, priceInr) => {
+                setPayLater({ quote, priceInr });
+                setSelectedProduct(quote.category_name);
+                setJourneyStep("payLater");
+                setFormErrors([]);
+                setLeadError("");
+                setChatOpen(true);
+              }}
+            />
           </div>
         </div>
       </section>
 
-      <section id="protect" className="bg-slate-900/70 py-20">
+      <section id="protect" className="bg-slate-50 py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-10 max-w-2xl">
-            <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+            <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
               Protect your product
             </div>
             <h2 className="mt-3 text-3xl font-bold md:text-4xl">
               What do you want to protect?
             </h2>
-            <p className="mt-4 text-slate-400">
+            <p className="mt-4 text-slate-600">
               Choose a product and Warrio will guide you through the next step.
             </p>
           </div>
@@ -468,22 +492,24 @@ export default function Home() {
                 onClick={() => {
                   setSelectedProduct(product.name);
                   setSelectedPlanId("");
+                  setPreferredTenure(0);
+                  setPayLater(null);
                   setJourneyStep("chat");
                   setFormErrors([]);
                   setLeadError("");
                   openWarrio(`I want to protect my ${product.name}`);
                 }}
-                className="group rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-left transition hover:-translate-y-1 hover:border-blue-500/40 hover:bg-blue-500/[0.08]"
+                className="group rounded-3xl border border-slate-200 bg-white p-6 text-left transition hover:-translate-y-1 hover:border-blue-500/40 hover:bg-blue-50"
               >
                 <div className="flex items-start justify-between">
                   <span className="text-4xl">{product.icon}</span>
-                  <span className="text-sm text-slate-500 transition group-hover:text-blue-400">
+                  <span className="text-sm text-slate-500 transition group-hover:text-brand-blue">
                     →
                   </span>
                 </div>
 
                 <div className="mt-6 text-lg font-bold">{product.name}</div>
-                <div className="mt-2 text-sm text-slate-400">
+                <div className="mt-2 text-sm text-slate-600">
                   {product.price}
                 </div>
               </button>
@@ -495,7 +521,7 @@ export default function Home() {
       <section id="how" className="py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center">
-            <div className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+            <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
               Simple
             </div>
             <h2 className="mt-3 text-3xl font-bold md:text-4xl">
@@ -523,13 +549,13 @@ export default function Home() {
             ].map((step) => (
               <div
                 key={step.number}
-                className="rounded-3xl border border-white/10 bg-white/[0.04] p-7"
+                className="rounded-3xl border border-slate-200 bg-white p-7"
               >
-                <div className="text-sm font-bold text-blue-400">
+                <div className="text-sm font-bold text-brand-blue">
                   {step.number}
                 </div>
                 <h3 className="mt-5 text-xl font-bold">{step.title}</h3>
-                <p className="mt-3 leading-7 text-slate-400">{step.text}</p>
+                <p className="mt-3 leading-7 text-slate-600">{step.text}</p>
               </div>
             ))}
           </div>
@@ -537,11 +563,11 @@ export default function Home() {
       </section>
 
       <section id="support" className="px-6 pb-20">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-blue-500/20 bg-blue-600/10 p-8 md:p-12">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-blue-500/20 bg-blue-50 p-8 md:p-12">
           <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
             <div>
               <h2 className="text-3xl font-bold">Not sure what you need?</h2>
-              <p className="mt-3 max-w-xl text-slate-400">
+              <p className="mt-3 max-w-xl text-slate-600">
                 Ask Warrio. It&apos;s built to help you understand your
                 warranty options before you make a decision.
               </p>
@@ -550,7 +576,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => openWarrio("I need help choosing the right warranty")}
-                className="shrink-0 rounded-2xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
+                className="shrink-0 rounded-2xl bg-brand-blue px-7 py-4 font-bold hover:bg-brand-blue-dark text-white"
               >
                 Talk to Warrio →
               </button>
@@ -558,18 +584,11 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-          <div>
-            © {new Date().getFullYear()} Warrantys.co · Deetya Warranty Pvt Ltd
-          </div>
-          <div>Powered by Warrio AI · Built by AA Labs</div>
-        </div>
-      </footer>
+      <SiteFooter />
 
-      {chatOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm md:items-center">
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+      {isChatOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm md:items-center">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-bold">🛡️ Warrio AI</div>
@@ -577,21 +596,24 @@ export default function Home() {
               </div>
 
               <button
-                onClick={() => setChatOpen(false)}
-                className="rounded-full bg-white/10 px-3 py-2 text-slate-300 hover:bg-white/15"
+                onClick={() => {
+                  setChatOpen(false);
+                  setAskLinkDismissed(true);
+                }}
+                className="rounded-full bg-slate-100 px-3 py-2 text-slate-700 hover:bg-slate-200"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mt-6 rounded-2xl bg-slate-800 p-4 text-sm leading-6 text-slate-300">
+            <div className="mt-6 rounded-2xl bg-slate-100 p-4 text-sm leading-6 text-slate-700">
               {selectedProduct
                 ? `Great - let's look at protection options for your ${selectedProduct}.`
                 : "Tell me what you need help with and I'll guide you."}
             </div>
 
             {journeyStep === "success" ? (
-              <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-5 text-sm leading-6 text-emerald-100">
+              <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-5 text-sm leading-6 text-emerald-900">
                 <div className="text-base font-bold">
                   Your warranty request has been created successfully.
                 </div>
@@ -600,21 +622,85 @@ export default function Home() {
                 <div>
                   Price: ₹{selectedPlan?.price_inr.toLocaleString("en-IN")}
                 </div>
-                <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-amber-100">
-                  Payment setup in progress
-                </div>
+                {paymentUrl ? (
+                  <a
+                    href={paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 block rounded-xl bg-brand-blue py-3 text-center text-base font-bold text-white transition hover:bg-brand-blue-dark"
+                  >
+                    Pay ₹{selectedPlan?.price_inr.toLocaleString("en-IN")} securely →
+                  </a>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-slate-700">
+                    Our payment page is busy right now. Our team will call you
+                    within 2 hours to complete your plan.
+                    <div className="mt-3 flex gap-4 text-sm">
+                      <a href={contact.phoneHref} className="font-semibold text-brand-blue hover:text-brand-blue-dark">
+                        📞 Call us
+                      </a>
+                      <a
+                        href={`${contact.whatsappHref}?text=${encodeURIComponent(
+                          `Hello Warrantys.co, my request reference is ${leadReference}.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-blue hover:text-brand-blue-dark"
+                      >
+                        💬 WhatsApp us
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {payLater && (
+                  <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-slate-800">
+                    <div className="font-bold">Next: send us your bill</div>
+                    <p className="mt-1">
+                      Please send a photo or PDF of your purchase bill within 7
+                      days so we can start your plan.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                      <a
+                        href={`${contact.whatsappHref}?text=${encodeURIComponent(
+                          `Hello Warrantys.co, here is my bill for request ${leadReference}.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-blue hover:text-brand-blue-dark"
+                      >
+                        💬 Send bill on WhatsApp
+                      </a>
+                      <a
+                        href={`mailto:${contact.email}?subject=${encodeURIComponent(
+                          `Bill for ${leadReference}`
+                        )}`}
+                        className="font-semibold text-brand-blue hover:text-brand-blue-dark"
+                      >
+                        ✉️ Email your bill
+                      </a>
+                    </div>
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-emerald-900/80">
+                  {paymentUrl
+                    ? "Opens Razorpay's secure payment page. "
+                    : ""}
+                  We never ask for OTP, PIN or card details on call or chat.
+                </p>
               </div>
             ) : (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <div className="text-sm font-semibold text-blue-300">
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-brand-blue">
                   {journeyStep === "chat"
                     ? "Start with your purchase invoice"
                     : journeyStep === "recommendation"
                       ? "Warrio's recommendation"
                       : journeyStep === "options"
-                        ? "Other verified options"
+                        ? "Choose your plan"
                         : journeyStep === "eligibility"
                           ? "Eligibility review"
+                        : journeyStep === "payLater"
+                          ? "Pay now, send bill later"
                     : journeyStep === "details"
                       ? "Customer details"
                       : "Review your request"}
@@ -622,14 +708,14 @@ export default function Home() {
 
                 {journeyStep === "chat" && !invoiceAnalysis && (
                   <>
-                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                    <p className="mt-3 text-sm leading-6 text-slate-700">
                       Upload your purchase invoice and Warrio will check the product,
                       purchase date and available protection options for you.
                     </p>
                     <button
                       type="button"
                       onClick={() => document.getElementById("invoice-upload")?.click()}
-                      className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500"
+                      className="mt-4 w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white"
                     >
                       Upload purchase invoice
                     </button>
@@ -638,9 +724,9 @@ export default function Home() {
 
                 {invoiceAnalysis && journeyStep === "recommendation" && selectedPlan && (
                   <>
-                    <div className="mt-3 rounded-xl bg-slate-950/60 p-4 text-sm leading-6 text-slate-200">
+                    <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-800">
                       <div className="whitespace-pre-line">{answer}</div>
-                      <div className="mt-3 font-semibold text-blue-200">
+                      <div className="mt-3 font-semibold text-brand-blue">
                         Recommended: {selectedPlan.plan_name} · ₹
                         {selectedPlan.price_inr.toLocaleString("en-IN")}
                       </div>
@@ -648,86 +734,156 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={continueToDetails}
-                      className="mt-4 w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500"
+                      className="mt-4 w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white"
                     >
                       Generate Secure Payment Link
                     </button>
                     <button
                       type="button"
                       onClick={() => setJourneyStep("options")}
-                      className="mt-2 w-full rounded-xl border border-white/10 py-3 text-sm text-slate-300 hover:bg-white/5"
+                      className="mt-2 w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50"
                     >
-                      View Other Plans
+                      Compare all plans
                     </button>
                   </>
                 )}
 
                 {invoiceAnalysis && journeyStep === "options" && (
                   <>
-                    <p className="mt-3 text-sm leading-6 text-slate-300">
-                      These are the other verified {productName} options. Coverage does not
-                      change unless the verified plan data says otherwise.
+                    <p className="mt-3 text-sm leading-6 text-slate-700">
+                      Choose the protection that suits you for your {productName}.
                     </p>
                     <div className="mt-3 space-y-2">
-                      {planOptions
-                        .filter((plan) => plan.id !== invoiceAnalysis.recommended_plan_id)
-                        .map((plan) => (
+                      {planOptions.map((plan) => {
+                        const chosen = plan.id === selectedPlanId;
+                        return (
                           <button
                             type="button"
                             key={plan.id}
-                            onClick={() => {
-                              setSelectedPlanId(plan.id);
-                              setJourneyStep("details");
-                            }}
-                            className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-3 py-3 text-left hover:bg-white/5"
+                            aria-pressed={chosen}
+                            onClick={() => setSelectedPlanId(plan.id)}
+                            className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition ${
+                              chosen
+                                ? "border-brand-blue bg-blue-50"
+                                : "border-slate-200 bg-white hover:border-brand-blue/50"
+                            }`}
                           >
-                            <span>{plan.label} · shorter commitment / lower upfront option</span>
-                            <span className="font-semibold">₹{plan.price_inr.toLocaleString("en-IN")}</span>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={`flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs ${
+                                  chosen ? "border-brand-blue bg-brand-blue text-white" : "border-slate-300"
+                                }`}
+                              >
+                                {chosen ? "✓" : ""}
+                              </span>
+                              <span className="font-semibold text-slate-800">{plan.label}</span>
+                              {plan.id === invoiceAnalysis.recommended_plan_id && (
+                                <span className="rounded-full bg-brand-green/20 px-2 py-0.5 text-xs font-semibold text-brand-green-dark">
+                                  Recommended
+                                </span>
+                              )}
+                            </span>
+                            <span className="font-bold text-brand-blue">
+                              ₹{plan.price_inr.toLocaleString("en-IN")}
+                            </span>
                           </button>
-                        ))}
+                        );
+                      })}
                     </div>
+                    <button
+                      type="button"
+                      onClick={continueToDetails}
+                      disabled={!selectedPlan}
+                      className="mt-4 w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:opacity-60"
+                    >
+                      {selectedPlan
+                        ? `Continue with ₹${selectedPlan.price_inr.toLocaleString("en-IN")}`
+                        : "Choose a plan"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJourneyStep("recommendation")}
+                      className="mt-2 w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      ← Back
+                    </button>
                   </>
                 )}
 
                 {invoiceAnalysis && journeyStep === "eligibility" && (
-                  <div className="mt-3 whitespace-pre-line rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                  <div className="mt-3 whitespace-pre-line rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-900">
                     {invoiceAnalysis.reply}
+                  </div>
+                )}
+
+                {journeyStep === "payLater" && payLater && (
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-800">
+                      <div className="font-semibold">{payLater.quote.plan_name}</div>
+                      <div className="text-lg font-black text-brand-blue">
+                        ₹{payLater.quote.price_inr.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input aria-label="Mobile number" type="tel" inputMode="numeric" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Email" type="email" placeholder="Email (optional)" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
+                    </div>
+                    <p className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
+                      Your plan starts after we check your bill. Please send it
+                      within 7 days of paying. If your device is not eligible,
+                      you get a full refund.
+                    </p>
+                    <label className="flex gap-3 text-sm leading-6 text-slate-700">
+                      <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
+                      <span>I want to proceed with this {productName} plan.</span>
+                    </label>
+                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-800">{leadError}</div>}
+                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
+                      {isSubmittingLead ? "Creating your payment link..." : "Continue to secure payment"}
+                    </button>
+                    <button type="button" onClick={() => { setChatOpen(false); setAskLinkDismissed(true); }} className="w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                      ← Change plan
+                    </button>
                   </div>
                 )}
 
                 {journeyStep === "details" && (
                   <div className="mt-4 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Mobile number" type="tel" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Email" type="email" placeholder="Email" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500 sm:col-span-2" />
-                      <input aria-label="Brand" placeholder="Brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Serial number" placeholder="Serial number" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500" />
-                      <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm text-slate-300 outline-none focus:border-blue-500" />
+                      <input aria-label="Mobile number" type="tel" inputMode="numeric" placeholder="Mobile number" value={customerDetails.mobile} onChange={(event) => updateCustomerDetail("mobile", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Full name" placeholder="Full name" value={customerDetails.fullName} onChange={(event) => updateCustomerDetail("fullName", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Email" type="email" placeholder="Email (optional)" value={customerDetails.email} onChange={(event) => updateCustomerDetail("email", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 sm:col-span-2" />
+                      <input aria-label="Brand" placeholder="Brand" value={customerDetails.brand} onChange={(event) => updateCustomerDetail("brand", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Model" placeholder="Model" value={customerDetails.model} onChange={(event) => updateCustomerDetail("model", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Serial number" placeholder="Serial number (optional)" value={customerDetails.serialNumber} onChange={(event) => updateCustomerDetail("serialNumber", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500" />
+                      <input aria-label="Purchase date" type="date" value={customerDetails.purchaseDate} onChange={(event) => updateCustomerDetail("purchaseDate", event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-blue-500" />
                     </div>
 
-                    <div className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-3 text-sm text-slate-300">
-                      <button type="button" onClick={() => document.getElementById("invoice-upload")?.click()} className="font-semibold text-blue-300 hover:text-blue-200">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                      <button type="button" onClick={() => document.getElementById("invoice-upload")?.click()} className="font-semibold text-brand-blue hover:text-brand-blue-dark">
                         {invoiceFile ? "Replace invoice" : "Upload invoice"}
                       </button>
-                      <span className="ml-2">{invoiceFile ? invoiceFile.name : "(optional for this V1)"}</span>
+                      <span className="ml-2">{invoiceFile ? invoiceFile.name : "(optional, you can send it later)"}</span>
                     </div>
 
-                    <label className="flex gap-3 text-sm leading-6 text-slate-300">
+                    <label className="flex gap-3 text-sm leading-6 text-slate-700">
                       <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
                       <span>I want to proceed with the selected {productName} warranty plan.</span>
                     </label>
 
-                    <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500">
+                    <button type="button" onClick={reviewOrder} className="w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark text-white">
                       Review request
+                    </button>
+                    <button type="button" onClick={() => { setFormErrors([]); setJourneyStep("options"); }} className="w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                      ← Change plan
                     </button>
                   </div>
                 )}
 
                 {journeyStep === "summary" && selectedPlan && (
-                  <div className="mt-4 space-y-2 text-sm text-slate-300">
-                    <div className="rounded-xl bg-slate-950/60 p-4 leading-7">
+                  <div className="mt-4 space-y-2 text-sm text-slate-700">
+                    <div className="rounded-xl bg-slate-50 p-4 leading-7">
                       <div>Customer: {customerDetails.fullName}</div>
                       <div>Product: {selectedPlan.category_name}</div>
                       <div>Brand/model: {customerDetails.brand} / {customerDetails.model}</div>
@@ -735,20 +891,20 @@ export default function Home() {
                       <div>Price: ₹{selectedPlan.price_inr.toLocaleString("en-IN")}</div>
                       <div>Purchase date: {customerDetails.purchaseDate}</div>
                       <div>Invoice: {invoiceFile ? invoiceFile.name : "Not uploaded"}</div>
-                      <div>Mobile/email: {customerDetails.mobile} / {customerDetails.email}</div>
+                      <div>Mobile: {customerDetails.mobile}{customerDetails.email ? ` / ${customerDetails.email}` : ""}</div>
                     </div>
-                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-red-100">{leadError}</div>}
-                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-blue-600 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
+                    {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-red-800">{leadError}</div>}
+                    <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60 text-white">
                       {isSubmittingLead ? "Creating request..." : "Proceed to Purchase"}
                     </button>
-                    <button type="button" onClick={() => setJourneyStep("details")} className="w-full rounded-xl border border-white/10 py-3 text-sm text-slate-300 hover:bg-white/5">
+                    <button type="button" onClick={() => setJourneyStep("details")} className="w-full rounded-xl border border-slate-200 py-3 text-sm text-slate-700 hover:bg-slate-50">
                       Edit details
                     </button>
                   </div>
                 )}
 
                 {formErrors.length > 0 && (
-                  <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm leading-6 text-red-100">
+                  <div className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm leading-6 text-red-800">
                     {formErrors.map((error) => <div key={error}>{error}</div>)}
                   </div>
                 )}
@@ -756,11 +912,11 @@ export default function Home() {
             )}
 
             {journeyStep === "chat" && isAnalyzingInvoice ? (
-              <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm leading-6 text-blue-100">
+              <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm leading-6 text-blue-900">
                 Warrio is reviewing your invoice...
               </div>
             ) : journeyStep === "chat" && answer ? (
-              <div className="mt-4 max-h-56 overflow-y-auto rounded-2xl bg-slate-800 p-4 text-sm leading-6 text-slate-200 whitespace-pre-wrap select-text">
+              <div className="mt-4 max-h-56 overflow-y-auto rounded-2xl bg-slate-100 p-4 text-sm leading-6 text-slate-800 whitespace-pre-wrap select-text">
                 {answer}
               </div>
             ) : null}
@@ -802,31 +958,31 @@ export default function Home() {
 
                     setQuestion(item);
                   }}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-300 hover:bg-white/10"
+                  className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700 hover:bg-slate-100"
                 >
                   {item}
                 </button>
               ))}
             </div>
 
-            <div className="mt-5 flex gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <input
                 type="file"
                 accept="image/*,.pdf"
                 className="hidden"
                 id="invoice-upload"
                 onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setInvoiceFile(file);
+                  reviewInvoice(e.target.files?.[0] || null);
+                  e.target.value = "";
                 }}
               />
 
               {invoiceFile && (
-                <div className="mb-2 w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                <div className="mb-2 w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-brand-blue">
                   📎 Invoice selected:{" "}
                   <span className="font-semibold">{invoiceFile.name}</span>
                   {isAnalyzingInvoice && (
-                    <div className="mt-1 text-xs text-blue-100/80">
+                    <div className="mt-1 text-xs text-blue-800">
                       Reviewing this invoice now.
                     </div>
                   )}
@@ -844,23 +1000,19 @@ export default function Home() {
                 }}
                 placeholder="Ask Warrio anything..."
                 rows={1}
-                className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-600 focus:border-blue-500"
+                className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500"
               />
 
               <button
                 type="button"
-                onClick={submitQuestion}
+                onClick={() => void submitQuestion()}
                 disabled={isAnalyzingInvoice && Boolean(invoiceFile)}
-                className="rounded-2xl bg-blue-600 px-5 font-bold hover:bg-blue-500"
+                className="rounded-2xl bg-brand-blue px-5 font-bold hover:bg-brand-blue-dark text-white"
               >
                 {isAnalyzingInvoice && invoiceFile ? "..." : "→"}
               </button>
             </div>
 
-            <p className="mt-4 text-center text-xs text-slate-600">
-              Warrio will use verified warranty information when connected to
-              the production system.
-            </p>
           </div>
         </div>
       )}
