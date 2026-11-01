@@ -1,3 +1,4 @@
+import { readFollowups } from "@/app/lib/followup/followup";
 import { PROBLEM_LABELS, readProblems } from "@/app/lib/monitoring/problems";
 import { findStuckCustomers, STUCK_LABELS, type StuckReason } from "@/app/lib/monitoring/stuck";
 
@@ -20,10 +21,16 @@ function whatsAppLink(mobile: string, name: string, formLink: string) {
 
 // Everything that went wrong for customers, and everyone who got stuck
 // before finishing, so the team can call them.
-export default async function ProblemsPage() {
-  const [problems, stuck] = await Promise.all([readProblems(), findStuckCustomers()]);
+export default async function ProblemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reminder?: string }>;
+}) {
+  const { reminder } = await searchParams;
+  const [problems, stuck, followups] = await Promise.all([readProblems(), findStuckCustomers(), readFollowups()]);
   const setup = [
     { name: "Problem alert emails", on: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) && process.env.ALERT_EMAILS !== "off", to: process.env.ALERT_EMAIL || "business@warrantys.co" },
+    { name: "Automatic reminder emails to unpaid customers", on: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) && process.env.FOLLOWUP_EMAILS !== "off", to: process.env.GMAIL_USER },
     { name: "Razorpay payment safety net", on: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET) },
   ];
 
@@ -47,6 +54,11 @@ export default async function ProblemsPage() {
 
       <section id="follow-up" className="mt-8">
         <h2 className="text-xl font-bold">Customers to follow up ({stuck.length})</h2>
+        {reminder && (
+          <div className={`mt-3 rounded-xl p-3 text-sm font-semibold ${reminder === "sent" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+            {reminder === "sent" ? "Reminder email sent." : "Could not send the reminder (the customer may have no email)."}
+          </div>
+        )}
         {stuck.length === 0 && (
           <div className="mt-3 rounded-xl border border-slate-200 bg-white p-5 text-sm text-emerald-700">
             Nobody is stuck right now.
@@ -75,11 +87,29 @@ export default async function ProblemsPage() {
                       {row.note && <div className="mt-1 text-xs font-semibold text-red-700">{row.note}</div>}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {row.lead.mobile && row.reason !== "amazon_no_details" && (
-                        <a href={`tel:+91${row.lead.mobile}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">
-                          Call
-                        </a>
+                      {row.reason === "not_paid" && (
+                        row.lead.email ? (
+                          <form action="/api/admin/followup" method="post">
+                            <input type="hidden" name="leadReference" value={row.lead.lead_reference} />
+                            <button type="submit" className="rounded-lg bg-brand-blue px-3 py-1 text-xs font-semibold text-white">
+                              Send email reminder
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-500">No email given</span>
+                        )
                       )}
+                      {row.reason === "not_paid" && (
+                        <span className="self-center text-xs text-slate-500">
+                          {(() => {
+                            const sent = followups.filter((f) => f.lead_reference === row.lead.lead_reference);
+                            return sent.length === 0 ? "No reminder sent yet" : `Reminders sent: ${sent.length} (last ${indiaTime(sent[sent.length - 1].date)})`;
+                          })()}
+                        </span>
+                      )}
+                      <a href={`/admin/chats#${row.lead.lead_reference}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">
+                        View chat
+                      </a>
                       {row.lead.mobile && row.formLink && (
                         <a
                           href={whatsAppLink(row.lead.mobile, row.lead.name, row.formLink)}

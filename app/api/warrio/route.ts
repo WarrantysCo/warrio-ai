@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import { reportProblem } from "@/app/lib/monitoring/problems";
 
 import { handleCustomerRequest } from "@/app/lib/agents/ceo";
+import { chatFileLabel, cleanChatId, saveChatLine } from "@/app/lib/chats/store";
+import { saveInvoiceFile } from "@/app/lib/warranty/store";
+import type { AgentResponse } from "@/app/lib/agents/types";
 import {
   isSupportedInvoiceFile,
   MAX_INVOICE_UPLOAD_BYTES,
@@ -12,6 +15,37 @@ import {
 function getTextField(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+// Saves what the customer said and what Warrio answered, so Amit can read it
+// later next to the lead. Never blocks or breaks the answer.
+async function logChat(
+  chatId: string,
+  customerText: string,
+  result: AgentResponse,
+  invoice: File | null
+) {
+  if (!chatId) return;
+  let text = customerText;
+  if (invoice) {
+    let saved = "";
+    try {
+      saved = await saveInvoiceFile(chatFileLabel(chatId), invoice);
+    } catch {
+      /* the chat line below still records the upload */
+    }
+    text += `${text ? " " : ""}[uploaded bill: ${invoice.name}${saved ? ` - saved as ${saved}` : ""}]`;
+  }
+  await saveChatLine({ chat_id: chatId, kind: "customer", text });
+  await saveChatLine({ chat_id: chatId, kind: "warrio", text: result.message ?? "" });
+  if (result.analysis) {
+    const a = result.analysis;
+    await saveChatLine({
+      chat_id: chatId,
+      kind: "event",
+      text: `Warrio read the bill: ${a.invoice?.brand ?? ""} ${a.invoice?.model ?? ""} Rs ${a.invoice?.price_inr ?? "?"}, ${a.eligibility_status}. Plans shown: ${(a.plan_options ?? []).map((plan) => `${plan.plan_name} Rs ${plan.price_inr}`).join(", ") || "none"}`,
+    });
+  }
 }
 
 export async function POST(request: Request) {
@@ -50,6 +84,7 @@ export async function POST(request: Request) {
         );
       }
 
+      const chatId = cleanChatId(getTextField(formData, "chatId"));
       const result = await handleCustomerRequest({
         channel: "website",
         message,
@@ -58,6 +93,7 @@ export async function POST(request: Request) {
         invoice: invoice ? await toInvoiceUpload(invoice) : undefined,
       });
 
+      await logChat(chatId, message, result, invoice);
       return NextResponse.json(result);
     }
 
@@ -78,6 +114,7 @@ export async function POST(request: Request) {
         typeof body?.selectedProduct === "string" ? body.selectedProduct : undefined,
     });
 
+    await logChat(cleanChatId(body?.chatId), message, result, null);
     return NextResponse.json(result);
   } catch (error) {
     await reportProblem({

@@ -1,14 +1,20 @@
 import type { Instrumentation } from "next";
 
 // Runs once when the website starts on Hostinger: checks every 30 minutes
-// whether the 9 am daily email to Amit is due (see dailyDigest.ts).
+// whether the 9 am daily email to Amit is due (see dailyDigest.ts) and whether
+// any unpaid customer is due a reminder email (see followup.ts).
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { sendDailyDigestIfDue } = await import("@/app/lib/monitoring/dailyDigest");
-  const check = () =>
+  const { sendDueFollowups } = await import("@/app/lib/followup/followup");
+  const check = () => {
     sendDailyDigestIfDue().catch((error) =>
       console.error("Daily digest failed:", error instanceof Error ? error.message : error)
     );
+    sendDueFollowups().catch((error) =>
+      console.error("Follow-up emails failed:", error instanceof Error ? error.message : error)
+    );
+  };
   setInterval(check, 30 * 60 * 1000).unref();
   void check();
 }

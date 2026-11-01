@@ -93,16 +93,24 @@ async function saveContact(lead: LeadRow, token: string): Promise<string> {
   return created.id;
 }
 
+export type HubSpotResult = { delivery: HubSpotDelivery; contactId?: string; dealId?: string };
+
 export async function sendLeadToHubSpot(
   lead: LeadRow & { payment_link: string }
 ): Promise<HubSpotDelivery> {
+  return (await sendLeadToHubSpotDetailed(lead)).delivery;
+}
+
+export async function sendLeadToHubSpotDetailed(
+  lead: LeadRow & { payment_link: string }
+): Promise<HubSpotResult> {
   const token = process.env.HUBSPOT_ACCESS_TOKEN;
-  if (!token) return "skipped";
+  if (!token) return { delivery: "skipped" };
 
   try {
     const contactId = await saveContact(lead, token);
 
-    await hubspot("/crm/v3/objects/deals", token, {
+    const deal = await hubspot("/crm/v3/objects/deals", token, {
       properties: {
         dealname: `${lead.recommended_plan} - ${deviceName(lead)} (${lead.lead_reference})`,
         amount: String(lead.plan_price_inr),
@@ -122,7 +130,7 @@ export async function sendLeadToHubSpot(
         },
       ],
     });
-    return "sent";
+    return { delivery: "sent", contactId, dealId: deal?.id };
   } catch (error) {
     await reportProblem({
       kind: "hubspot",
@@ -130,6 +138,49 @@ export async function sendLeadToHubSpot(
       message: `Lead not saved in HubSpot: ${error instanceof Error ? error.message : String(error)}`,
       lead_reference: lead.lead_reference,
       mobile: lead.mobile,
+    });
+    return { delivery: "failed" };
+  }
+}
+
+// Adds a note (for example the customer's whole Warrio chat) to the lead's
+// deal and contact in HubSpot, so opening the lead shows it.
+export async function addNoteToHubSpot(options: {
+  contactId?: string;
+  dealId?: string;
+  body: string;
+  leadReference: string;
+}): Promise<HubSpotDelivery> {
+  const token = process.env.HUBSPOT_ACCESS_TOKEN;
+  if (!token || (!options.contactId && !options.dealId)) return "skipped";
+  try {
+    const associations = [
+      ...(options.contactId
+        ? [{ to: { id: options.contactId }, types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 202 }] }]
+        : []),
+      ...(options.dealId
+        ? [{ to: { id: options.dealId }, types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 214 }] }]
+        : []),
+    ];
+    await hubspot("/crm/v3/objects/notes", token, {
+      properties: {
+        hs_timestamp: String(Date.now()),
+        // HubSpot notes are HTML; keep line breaks readable.
+        hs_note_body: options.body
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/\n/g, "<br>")
+          .slice(0, 60000),
+      },
+      associations,
+    });
+    return "sent";
+  } catch (error) {
+    await reportProblem({
+      kind: "hubspot",
+      where: "/api/leads",
+      message: `Chat note not saved in HubSpot: ${error instanceof Error ? error.message : String(error)}`,
+      lead_reference: options.leadReference,
     });
     return "failed";
   }

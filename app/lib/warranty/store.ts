@@ -3,7 +3,8 @@ import "server-only";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { leadsFile } from "@/app/lib/integrations/leadStore";
+import { leadsFile, readLeads } from "@/app/lib/integrations/leadStore";
+import { leadUpdatesAddress, sendMail } from "@/app/lib/warranty/email";
 
 // What happens to an order after the lead: the payment Razorpay confirmed and
 // the details the customer sent for the certificate. Kept next to leads.jsonl,
@@ -62,10 +63,39 @@ function warrantyFile() {
   return path.join(/*turbopackIgnore: true*/ dataDir(), "warranty.jsonl");
 }
 
+const UPDATE_TEXT: Record<WarrantyRecord["type"], string> = {
+  payment: "Payment received",
+  details: "Customer sent their device details",
+  sent: "Warranty certificate emailed to the customer",
+};
+
+// Every step of an order is also emailed to warrantys.co.amz@gmail.com, so
+// that mailbox holds the full story of each lead.
+async function emailUpdate(record: WarrantyRecord) {
+  const lead = (await readLeads()).reverse().find((row) => row.lead_reference === record.lead_reference);
+  await sendMail({
+    to: leadUpdatesAddress(),
+    subject: `${UPDATE_TEXT[record.type]}: ${record.lead_reference}${lead ? ` (${lead.name})` : ""}`,
+    text: [
+      `${UPDATE_TEXT[record.type]}.`,
+      ``,
+      `Lead: ${record.lead_reference}`,
+      lead ? `Customer: ${lead.name}, ${lead.mobile}${lead.email ? `, ${lead.email}` : ""}` : "",
+      lead ? `Plan: ${lead.recommended_plan}, Rs ${lead.plan_price_inr}` : "",
+      record.type === "payment" ? `Razorpay payment: ${record.payment_id}` : "",
+      record.type === "details" ? `Device: ${record.brand} ${record.model}, serial ${record.serial_or_imei || "not given"}, bill file ${record.invoice_file || "none"}` : "",
+      record.type === "sent" ? `Plan runs ${record.plan_start_date} to ${record.plan_end_date}` : "",
+    ].filter(Boolean).join("\n"),
+  });
+}
+
 export async function saveWarrantyRecord(record: WarrantyRecord): Promise<boolean> {
   try {
+    const alreadyPaid =
+      record.type === "payment" && Boolean((await readWarrantyStatuses()).get(record.lead_reference)?.payment);
     await mkdir(/*turbopackIgnore: true*/ dataDir(), { recursive: true });
     await appendFile(/*turbopackIgnore: true*/ warrantyFile(), `${JSON.stringify(record)}\n`, "utf8");
+    if (!alreadyPaid) void emailUpdate(record).catch(() => {});
     return true;
   } catch (error) {
     console.error(
