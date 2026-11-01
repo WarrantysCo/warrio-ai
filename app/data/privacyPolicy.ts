@@ -45,6 +45,12 @@ export const privacyPolicy: Section[] = [
     ],
   },
   {
+    heading: "Chats and Bills You Share With Us",
+    body: [
+      "When you chat with Warrio or upload a bill or invoice, Warrantys.co saves your messages and the file so that we can recommend the right plan, follow up on your order, and keep a record of it. Your name and mobile number are linked to this chat if you place an order. We may email you about a plan you did not complete.",
+    ],
+  },
+  {
     heading: "Log Data",
     body: [
       "We collect data sent by your browser during website visits, which may include:",

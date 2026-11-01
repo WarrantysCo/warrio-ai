@@ -9,7 +9,9 @@ import {
   quotePlans,
 } from "@/app/lib/agents/sales/pricing";
 import type { SalesAnalysis } from "@/app/lib/agents/sales/types";
-import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
+import { sendLeadToHubSpotDetailed } from "@/app/lib/integrations/hubspot";
+import { archiveNewLead } from "@/app/lib/leadArchive";
+import { cleanChatId } from "@/app/lib/chats/store";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
 import { createPaymentLink } from "@/app/lib/integrations/razorpay";
@@ -161,11 +163,20 @@ export async function POST(request: Request) {
     });
 
     const leadWithLink = { ...lead, payment_link: paymentUrl ?? "" };
-    const [saved, n8n, hubspot] = await Promise.all([
+    const [saved, n8n, hubspotResult] = await Promise.all([
       saveLead(leadWithLink),
       sendLeadToN8n(lead),
-      sendLeadToHubSpot(leadWithLink),
+      sendLeadToHubSpotDetailed(leadWithLink),
     ]);
+    const hubspot = hubspotResult.delivery;
+    // Chat, bill copy, HubSpot note and the email to warrantys.co.amz@gmail.com
+    // happen after the customer already has their payment link.
+    void archiveNewLead({
+      lead: leadWithLink,
+      invoice,
+      chatId: cleanChatId(getValue(values, "chatId")),
+      hubspot: hubspotResult,
+    });
     if (!saved) {
       await reportProblem({
         kind: "saving_failed",

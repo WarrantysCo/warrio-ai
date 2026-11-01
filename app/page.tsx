@@ -122,6 +122,13 @@ export default function Home() {
   const [paymentUrl, setPaymentUrl] = useState("");
   const [leadError, setLeadError] = useState("");
   const invoiceAnalysisRequestIdRef = useRef(0);
+  // A random id for this visit, so Warrantys.co can keep the whole chat with
+  // the lead once the customer gives their name and mobile.
+  const chatIdRef = useRef("");
+  const getChatId = () => {
+    if (!chatIdRef.current) chatIdRef.current = crypto.randomUUID();
+    return chatIdRef.current;
+  };
 
   const planOptions = invoiceAnalysis?.plan_options ?? [];
   const selectedPlan =
@@ -216,6 +223,7 @@ export default function Home() {
       formData.append("email", customerDetails.email.trim());
       formData.append("selectedPlanId", selectedPlan.id);
       formData.append("consent", String(customerDetails.consent));
+      formData.append("chatId", getChatId());
 
       if (payLater) {
         formData.append("billLater", "true");
@@ -295,6 +303,7 @@ export default function Home() {
             "Please analyze this invoice and recommend the available warranty options."
         );
         formData.append("invoice", invoice, invoice.name);
+        formData.append("chatId", getChatId());
 
         if (selectedProduct) {
           formData.append("selectedProduct", selectedProduct);
@@ -313,6 +322,7 @@ export default function Home() {
           body: JSON.stringify({
             message: trimmedQuestion,
             selectedProduct: selectedProduct || undefined,
+            chatId: getChatId(),
           }),
         });
       }

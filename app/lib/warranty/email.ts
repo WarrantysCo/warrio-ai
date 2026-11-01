@@ -67,3 +67,38 @@ export async function sendAlertEmail(options: { to: string; subject: string; tex
     return false;
   }
 }
+
+// The mailbox that keeps every lead update (new orders with the customer's
+// chat and bill attached, payments, follow-ups): warrantys.co.amz@gmail.com.
+export function leadUpdatesAddress() {
+  return process.env.LEAD_UPDATES_EMAIL || process.env.GMAIL_USER || "warrantys.co.amz@gmail.com";
+}
+
+// Sends any email from the Gmail account, with optional attachments. Returns
+// whether it was sent; never throws.
+export async function sendMail(options: {
+  to: string;
+  bcc?: string;
+  replyTo?: string;
+  subject: string;
+  text: string;
+  attachments?: { filename: string; content: Buffer }[];
+}): Promise<boolean> {
+  const gmail = gmailTransport();
+  if (!gmail) return false;
+  try {
+    await gmail.transporter.sendMail({
+      from: `"Warrantys.co" <${gmail.user}>`,
+      to: options.to,
+      bcc: options.bcc,
+      replyTo: options.replyTo,
+      subject: options.subject,
+      text: options.text,
+      attachments: options.attachments,
+    });
+    return true;
+  } catch (error) {
+    console.error("Email failed:", error instanceof Error ? error.message : error);
+    return false;
+  }
+}
