@@ -30,14 +30,25 @@ export async function sendCertificateEmail(options: {
   if (!gmail) return { ok: false, error: "Email is not set up yet." };
   const { transporter, user } = gmail;
 
+  const body = [
+    `Hi ${options.customerName},`,
+    ``,
+    `Thank you for protecting your device with Warrantys.co. Your warranty certificate is attached.`,
+    ``,
+    `Order ID: ${options.orderId}`,
+    ``,
+    `If you ever need help, call us at 8875192691 or reply to this email.`,
+  ];
   try {
     await transporter.sendMail({
       from: `"Warrantys.co" <${user}>`,
       to: options.to,
       subject: `Your Warrantys.co warranty certificate - Order ${options.orderId}`,
-      text: `Hi ${options.customerName},\n\nThank you for protecting your device with Warrantys.co. Your warranty certificate is attached.\n\nOrder ID: ${options.orderId}\n\nIf you ever need help, call us at 8875192691 or reply to this email.\n\nWarrantys.co team`,
+      text: `${body.join("\n")}\n\nWarrantys.co team`,
+      html: brandedHtml(body),
       attachments: [
         { filename: options.fileName, content: Buffer.from(options.pdf), contentType: "application/pdf" },
+        await logoAttachment(),
       ],
     });
     return { ok: true };
