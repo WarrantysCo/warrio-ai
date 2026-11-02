@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { leadsFile, type StoredLead } from "@/app/lib/integrations/leadStore";
 import { findStuckCustomers } from "@/app/lib/monitoring/stuck";
-import { leadUpdatesAddress, sendMail } from "@/app/lib/warranty/email";
+import { brandedHtml, leadUpdatesAddress, sendMail } from "@/app/lib/warranty/email";
 
 // Friendly reminder emails, sent from warrantys.co.amz@gmail.com, to customers
 // who picked a plan and got a payment link but did not pay. Email only for now
@@ -82,12 +82,15 @@ function emailFor(lead: StoredLead, step: 1 | 2) {
 
 async function sendStep(lead: StoredLead, step: 1 | 2, manual = false): Promise<boolean> {
   const { subject, text } = emailFor(lead, step);
+  // The signature line moves into the branded version, which adds the logo.
+  const html = brandedHtml(text.replace(/\n*Warrantys\.co team$/, "").split("\n"));
   const sent = await sendMail({
     to: lead.email,
     bcc: leadUpdatesAddress(),
     replyTo: leadUpdatesAddress(),
     subject,
     text,
+    html,
   });
   if (sent) {
     await mkdir(/*turbopackIgnore: true*/ path.dirname(followupFile()), { recursive: true });
