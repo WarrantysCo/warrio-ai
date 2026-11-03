@@ -43,6 +43,9 @@ export async function sendCertificateEmail(options: {
     await transporter.sendMail({
       from: `"Warrantys.co" <${user}>`,
       to: options.to,
+      // Amit gets a copy of the exact email sent — with the PDF attached —
+      // not just the separate text-only status note from saveWarrantyRecord.
+      bcc: leadUpdatesAddress(),
       subject: `Your Warrantys.co warranty certificate - Order ${options.orderId}`,
       text: `${body.join("\n")}\n\nWarrantys.co team`,
       html: brandedHtml(body),
