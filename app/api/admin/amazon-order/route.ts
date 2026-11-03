@@ -6,7 +6,7 @@ import { sendLeadToHubSpot } from "@/app/lib/integrations/hubspot";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import type { LeadRow } from "@/app/lib/integrations/n8n";
 import { amazonLeadReference } from "@/app/lib/warranty/amazonLead";
-import { warrantyLink } from "@/app/lib/warranty/link";
+import { siteUrl, warrantyLink } from "@/app/lib/warranty/link";
 import { saveInvoiceFile, saveWarrantyRecord } from "@/app/lib/warranty/store";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,11 @@ export async function POST(request: Request) {
   const photo1 = file(form, "conditionPhoto1");
   const photo2 = file(form, "conditionPhoto2");
 
-  const back = new URL("/admin/amazon", request.url);
+  // Built from SITE_URL, not request.url: behind Hostinger's proxy the raw
+  // request URL can be the server's own bind address (0.0.0.0:3000), which
+  // sends Amit's browser to an unreachable address instead of back to the
+  // admin page.
+  const back = new URL("/admin/amazon", siteUrl());
   if (!amazonOrderId || !categoryId || !Number.isFinite(priceInr) || !tenureYears) {
     back.searchParams.set("error", "Please fill in the order ID, category, price and plan length.");
     return NextResponse.redirect(back, 303);
