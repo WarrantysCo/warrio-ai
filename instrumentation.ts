@@ -1,8 +1,9 @@
 import type { Instrumentation } from "next";
 
 // Runs once when the website starts on Hostinger: checks every 30 minutes
-// whether the 9 am daily email to Amit is due (see dailyDigest.ts) and whether
-// any unpaid customer is due a reminder email (see followup.ts).
+// whether any unpaid customer is due a reminder email (see followup.ts), and
+// whether the 9 am daily check-in email to Amit is due (see dailyDigest.ts —
+// off by default since 2026-11-04, Amit only wants to hear about real issues).
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { sendDailyDigestIfDue } = await import("@/app/lib/monitoring/dailyDigest");

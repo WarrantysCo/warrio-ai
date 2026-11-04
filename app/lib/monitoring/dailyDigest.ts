@@ -13,6 +13,11 @@ import { findStuckCustomers, STUCK_LABELS } from "./stuck";
 // how many problems the site had in the last 24 hours. Started from
 // instrumentation.ts when the server starts. The date of the last email is
 // kept on disk so a restart does not send a second one the same day.
+//
+// Amit asked (2026-11-04) to stop this daily check and only hear from the
+// site when something actually goes wrong — the instant alerts in
+// problems.ts already cover that, so this digest is off by default. Set
+// DAILY_DIGEST=on in Hostinger to bring it back.
 
 const SEND_HOUR_IST = 9;
 
@@ -29,6 +34,7 @@ function hourInIndia(now: Date) {
 }
 
 export async function sendDailyDigestIfDue(now = new Date()) {
+  if (process.env.DAILY_DIGEST !== "on") return;
   if (process.env.ALERT_EMAILS === "off") return;
   if (hourInIndia(now) < SEND_HOUR_IST) return;
   const today = todayInIndia(now);

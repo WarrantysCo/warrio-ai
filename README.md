@@ -44,7 +44,8 @@ JITI_ALIAS='{"@":"'$PWD'"}' npx jiti scripts/n8n/build-workflow.ts > Warrio-Work
 | `N8N_LEADS_WEBHOOK_URL` | Optional. n8n Webhook URL that saves website leads |
 | `N8N_WEBHOOK_SECRET` | Optional. Sent as the `X-Warrio-Secret` header |
 | `HUBSPOT_ACCESS_TOKEN` | Optional. HubSpot private app token (scopes `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.objects.deals.write`); each lead becomes a contact plus a deal |
-| `ALERT_EMAIL` | Optional. Where problem alerts and the 9 am daily check go (default `business@warrantys.co`); sent through `GMAIL_USER`/`GMAIL_APP_PASSWORD`. `ALERT_EMAILS=off` stops them |
+| `ALERT_EMAIL` | Optional. Where problem alerts (and the 9 am daily check, if turned on) go (default `business@warrantys.co`); sent through `GMAIL_USER`/`GMAIL_APP_PASSWORD`. `ALERT_EMAILS=off` stops them |
+| `DAILY_DIGEST` | Optional. The 9 am daily "everything OK" email is off by default (Amit only wants problem alerts); set to `on` to bring it back |
 | `RAZORPAY_WEBHOOK_SECRET` | Optional. Secret of the Razorpay webhook pointing at `/api/razorpay/webhook` (events `payment_link.paid`, `payment.failed`), so payments are recorded even if the customer closes the page |
 
 ## Monitoring
