@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useSyncExternalStore } from "react";
+import { trackEvent } from "@/app/lib/analytics";
 
 import GetPlanBox from "./components/GetPlanBox";
 import SiteFooter from "./components/SiteFooter";
@@ -196,6 +197,8 @@ export default function Home() {
       return;
     }
 
+    trackEvent("plan_chosen", { value: selectedPlan.price_inr, currency: "INR" });
+
     setJourneyStep("details");
     setFormErrors([]);
   };
@@ -250,6 +253,11 @@ export default function Home() {
       }
 
       setLeadReference(result.leadReference);
+      trackEvent("generate_lead", {
+        value: selectedPlan?.price_inr ?? 0,
+        currency: "INR",
+        pay_later: payLater ? "yes" : "no",
+      });
       setPaymentUrl(typeof result.paymentUrl === "string" ? result.paymentUrl : "");
       setJourneyStep("success");
     } catch (error) {
@@ -265,6 +273,7 @@ export default function Home() {
   };
 
   const openWarrio = (message = "") => {
+    if (!chatOpen) trackEvent("chat_started");
     setQuestion(message);
     setChatOpen(true);
   };
@@ -635,6 +644,9 @@ export default function Home() {
                 {paymentUrl ? (
                   <a
                     href={paymentUrl}
+                    onClick={() =>
+                      trackEvent("begin_checkout", { value: selectedPlan?.price_inr ?? 0, currency: "INR" })
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-4 block rounded-xl bg-brand-blue py-3 text-center text-base font-bold text-white transition hover:bg-brand-blue-dark"

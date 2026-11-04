@@ -6,6 +6,7 @@ import { isPaidCallback, type PaymentCallback } from "@/app/lib/integrations/raz
 import { isValidWarrantyToken } from "@/app/lib/warranty/link";
 import { readWarrantyStatus, saveWarrantyRecord } from "@/app/lib/warranty/store";
 
+import TrackPurchase from "./TrackPurchase";
 import WarrantyForm from "./WarrantyForm";
 
 // The personal page where a paid customer sends what the certificate needs.
@@ -87,6 +88,9 @@ export default async function WarrantyPage({
         </>
       }
     >
+      {status.payment ? (
+        <TrackPurchase leadReference={leadReference} value={Number(lead.plan_price_inr) || 0} />
+      ) : null}
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <WarrantyForm
           leadReference={leadReference}
