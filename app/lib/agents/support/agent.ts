@@ -6,6 +6,7 @@ import {
   createModel,
   getErrorMessage,
 } from "../../ai/gemini";
+import { reportProblem } from "../../monitoring/problems";
 import { buildVerifiedDataBlock } from "../knowledge";
 import type { AgentRequest, AgentResponse, WarrioAgent } from "../types";
 
@@ -32,7 +33,11 @@ async function handle(request: AgentRequest): Promise<AgentResponse> {
 
     return { success: true, agent: "support", message: result.response.text() };
   } catch (error) {
-    console.error("Support agent error:", getErrorMessage(error));
+    await reportProblem({
+      kind: "warrio_ai",
+      where: "Warrio support chat",
+      message: `Could not answer a customer: ${getErrorMessage(error)}`,
+    });
     return { success: false, agent: "support", message: AI_UNAVAILABLE_MESSAGE };
   }
 }
