@@ -230,19 +230,35 @@ export async function buildCertificatePdf(data: CertificateData): Promise<Uint8A
     ["Make", data.brand],
   ];
 
+  // Draws one "Label: value" row, wrapping the value onto extra lines when
+  // it's too long for its column (e.g. a multi-device "Insured" list) so it
+  // pushes the rows below it down instead of overlapping them.
+  function drawField(
+    page: PDFPage,
+    labelX: number,
+    valueX: number,
+    rowY: number,
+    label: string,
+    value: string,
+    maxWidth: number
+  ): number {
+    page.drawText(`${label}:`, { x: labelX, y: rowY, size: 8, font: bold, color: MUTED });
+    const lines = wrapText(regular, 9, value || "-", maxWidth);
+    lines.forEach((line, i) => {
+      page.drawText(line, { x: valueX, y: rowY - i * 11, size: 9, font: regular, color: INK });
+    });
+    return Math.max(19, lines.length * 11 + 8);
+  }
+
   y = fieldsTop;
   for (const [label, value] of left) {
-    page1.drawText(`${label}:`, { x: textX, y, size: 8, font: bold, color: MUTED });
-    page1.drawText(value || "-", { x: textX + 110, y, size: 9, font: regular, color: INK, maxWidth: 140 });
-    y -= 19;
+    y -= drawField(page1, textX, textX + 110, y, label, value, 140);
   }
 
   y = fieldsTop;
   const col2 = textX + textWidth / 2;
   for (const [label, value] of right) {
-    page1.drawText(`${label}:`, { x: col2, y, size: 8, font: bold, color: MUTED });
-    page1.drawText(value || "-", { x: col2 + 90, y, size: 9, font: regular, color: INK, maxWidth: textWidth / 2 - 100 });
-    y -= 19;
+    y -= drawField(page1, col2, col2 + 90, y, label, value, textWidth / 2 - 100);
   }
 
   page1.drawText("This certificate is subject to the Terms & Conditions / Exclusions printed on the following pages.", {
