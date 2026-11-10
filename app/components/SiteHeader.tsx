@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 const navLinks = [
+  { href: "/warranty-check", label: "Free Warranty Check" },
   { href: "/plans", label: "Plans & Prices" },
   { href: "/#how", label: "How It Works" },
   { href: "/claims", label: "Raise a Claim" },
