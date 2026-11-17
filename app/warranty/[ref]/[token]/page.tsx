@@ -6,6 +6,7 @@ import { isPaidCallback, type PaymentCallback } from "@/app/lib/integrations/raz
 import { isValidWarrantyToken } from "@/app/lib/warranty/link";
 import { readWarrantyStatus, saveWarrantyRecord } from "@/app/lib/warranty/store";
 
+import GoogleCustomerReviewsOptIn from "./GoogleCustomerReviewsOptIn";
 import TrackPurchase from "./TrackPurchase";
 import WarrantyForm from "./WarrantyForm";
 
@@ -89,7 +90,14 @@ export default async function WarrantyPage({
       }
     >
       {status.payment ? (
-        <TrackPurchase leadReference={leadReference} value={Number(lead.plan_price_inr) || 0} />
+        <>
+          <TrackPurchase leadReference={leadReference} value={Number(lead.plan_price_inr) || 0} />
+          <GoogleCustomerReviewsOptIn
+            orderId={leadReference}
+            email={saved?.email ?? lead.email}
+            estimatedDeliveryDate={new Date().toISOString().slice(0, 10)}
+          />
+        </>
       ) : null}
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <WarrantyForm
