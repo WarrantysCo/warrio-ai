@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import { priceCategories } from "@/app/data/priceList";
+import { salesRules } from "@/app/data/salesRules";
 import { quotePlans } from "@/app/lib/agents/sales/pricing";
 import type { PlanQuote } from "@/app/lib/agents/sales/types";
 
@@ -145,6 +146,28 @@ export default function GetPlanBox({
                   </div>
                   {chosenQuote ? (
                     <>
+                      <div className="mt-3 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                        <div>
+                          <div className="text-xs font-bold text-emerald-700">
+                            What&apos;s covered
+                          </div>
+                          <ul className="mt-1 space-y-0.5 text-xs text-slate-700">
+                            {salesRules.coverage.map((item) => (
+                              <li key={item}>✓ {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-700">
+                            Not covered
+                          </div>
+                          <ul className="mt-1 space-y-0.5 text-xs text-slate-600">
+                            {salesRules.exclusions.map((item) => (
+                              <li key={item}>✕ {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
