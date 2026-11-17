@@ -8,12 +8,17 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { sendDailyDigestIfDue } = await import("@/app/lib/monitoring/dailyDigest");
   const { sendDueFollowups } = await import("@/app/lib/followup/followup");
+  const { sendDueLockerReminders } = await import("@/app/lib/locker/store");
   const check = () => {
     sendDailyDigestIfDue().catch((error) =>
       console.error("Daily digest failed:", error instanceof Error ? error.message : error)
     );
     sendDueFollowups().catch((error) =>
       console.error("Follow-up emails failed:", error instanceof Error ? error.message : error)
+    );
+    // Bill Locker: reminders before a saved bill's brand warranty ends.
+    sendDueLockerReminders().catch((error) =>
+      console.error("Bill Locker reminders failed:", error instanceof Error ? error.message : error)
     );
   };
   setInterval(check, 30 * 60 * 1000).unref();
