@@ -11,7 +11,8 @@ import type { LeadRow } from "./n8n";
 // folder, not the app folder, because Hostinger replaces the app folder on
 // every deploy and a lead saved there was lost. LEADS_FILE overrides it.
 
-export type StoredLead = LeadRow & { payment_link: string };
+// partner_code: the approved partner whose link or QR code brought the customer.
+export type StoredLead = LeadRow & { payment_link: string; partner_code?: string };
 
 export function leadsFile() {
   return (

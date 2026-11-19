@@ -31,6 +31,7 @@ export type LockerRecord = {
   warranty_months: number;
   warranty_end_date: string; // YYYY-MM-DD
   invoice_file: string;
+  partner_code?: string;
 };
 
 type ReminderStep = "window" | "end30" | "end7";

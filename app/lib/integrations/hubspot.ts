@@ -43,7 +43,7 @@ function deviceName(lead: LeadRow) {
   return [lead.brand, lead.model].filter(Boolean).join(" ") || lead.product_category;
 }
 
-function dealDescription(lead: LeadRow & { payment_link: string }) {
+function dealDescription(lead: LeadRow & { payment_link: string; partner_code?: string }) {
   return [
     `Lead reference: ${lead.lead_reference}`,
     `Status: ${lead.status}`,
@@ -56,6 +56,7 @@ function dealDescription(lead: LeadRow & { payment_link: string }) {
     `Days since purchase: ${lead.days_since_purchase ?? "unknown"}`,
     `Invoice: ${lead.invoice_ok ? "read OK" : "not checked"}${lead.invoice_number ? ` (${lead.invoice_number}, ${lead.seller ?? ""})` : ""}`,
     `Payment link: ${lead.payment_link || "none (WhatsApp fallback)"}`,
+    lead.partner_code ? `Partner code: ${lead.partner_code} (partner commission applies)` : "",
     lead.question ? `Customer question: ${lead.question}` : "",
     lead.notes_for_team ? `Notes for team: ${lead.notes_for_team}` : "",
   ]
@@ -96,13 +97,13 @@ async function saveContact(lead: LeadRow, token: string): Promise<string> {
 export type HubSpotResult = { delivery: HubSpotDelivery; contactId?: string; dealId?: string };
 
 export async function sendLeadToHubSpot(
-  lead: LeadRow & { payment_link: string }
+  lead: LeadRow & { payment_link: string; partner_code?: string }
 ): Promise<HubSpotDelivery> {
   return (await sendLeadToHubSpotDetailed(lead)).delivery;
 }
 
 export async function sendLeadToHubSpotDetailed(
-  lead: LeadRow & { payment_link: string }
+  lead: LeadRow & { payment_link: string; partner_code?: string }
 ): Promise<HubSpotResult> {
   const token = process.env.HUBSPOT_ACCESS_TOKEN;
   if (!token) return { delivery: "skipped" };

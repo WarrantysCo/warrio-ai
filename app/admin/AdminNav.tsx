@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/admin/problems", label: "Problems & follow-ups" },
   { href: "/admin/chats", label: "Customer chats" },
   { href: "/admin/warranty", label: "Certificates" },
+  { href: "/admin/partners", label: "Partners" },
   { href: "/admin/amazon", label: "Add Amazon order" },
 ];
 
