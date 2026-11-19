@@ -34,7 +34,8 @@ export default function PartnerForm() {
       const data = (await response.json().catch(() => null)) as { success?: boolean; message?: string } | null;
       if (!response.ok || !data?.success) {
         setError(data?.message || "Something went wrong. Please try again.");
-        reportFromBrowser({ kind: "form_failed", message: `Partner form got error ${response.status}` });
+        // A 400 is only a refused detail (wrong PAN, mobile...) and the visitor sees why: not a site problem.
+        if (response.status >= 500) reportFromBrowser({ kind: "form_failed", message: `Partner form got error ${response.status}` });
         return;
       }
       trackEvent("partner_apply");
@@ -101,20 +102,20 @@ export default function PartnerForm() {
       <div className="rounded-2xl bg-slate-50 p-4">
         <div className="text-sm font-bold text-slate-900">Business registration</div>
         <p className="mt-1 text-xs text-slate-600">
-          Give your GST number, or upload any one registration proof (Udyam, Shop &amp; Establishment, company
-          certificate).
+          Everything here is optional. If you have a GST number or a registration (Udyam, Shop &amp; Establishment, company
+          certificate), please share it: it helps us approve you faster.
         </p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <Field label="GST number">
+          <Field label="GST number (optional)">
             <input name="gst" maxLength={15} placeholder="15 characters" className={`${inputClass} uppercase`} />
           </Field>
-          <Field label="Business PAN" hint="Needed to pay your commission">
-            <input name="pan" required maxLength={10} placeholder="ABCDE1234F" className={`${inputClass} uppercase`} />
+          <Field label="PAN (optional)" hint="We will need it before paying commission">
+            <input name="pan" maxLength={10} placeholder="ABCDE1234F" className={`${inputClass} uppercase`} />
           </Field>
           <Field label="Udyam / registration number (optional)">
             <input name="registrationNo" maxLength={40} className={inputClass} />
           </Field>
-          <Field label="Registration proof (photo or PDF)" hint="Required if you do not have a GST number">
+          <Field label="Registration proof, photo or PDF (optional)">
             <input name="proof" type="file" accept="image/*,.pdf" className="w-full text-sm" />
           </Field>
         </div>

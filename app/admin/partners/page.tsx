@@ -90,7 +90,7 @@ export default async function PartnersAdminPage({
               <div><dt className="inline font-semibold">Contact: </dt><dd className="inline">{partner.owner_name}, {partner.mobile}, {partner.email}</dd></div>
               <div><dt className="inline font-semibold">Address: </dt><dd className="inline">{partner.address}</dd></div>
               <div><dt className="inline font-semibold">GST: </dt><dd className="inline">{partner.gst || "not given"}</dd></div>
-              <div><dt className="inline font-semibold">PAN: </dt><dd className="inline">{partner.pan}</dd></div>
+              <div><dt className="inline font-semibold">PAN: </dt><dd className="inline">{partner.pan || "not given"}</dd></div>
               <div><dt className="inline font-semibold">Registration no: </dt><dd className="inline">{partner.registration_no || "none"}</dd></div>
               <div><dt className="inline font-semibold">Sells: </dt><dd className="inline">{partner.devices_per_month}</dd></div>
               {partner.website && <div><dt className="inline font-semibold">Link: </dt><dd className="inline break-all">{partner.website}</dd></div>}
