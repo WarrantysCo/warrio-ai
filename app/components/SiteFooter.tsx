@@ -18,6 +18,7 @@ const columns = [
     links: [
       { href: "/faq", label: "FAQ" },
       { href: "/contact", label: "Contact Us" },
+      { href: "/partners", label: "Become a Partner" },
     ],
   },
   {

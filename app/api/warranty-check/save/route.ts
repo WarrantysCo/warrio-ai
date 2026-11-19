@@ -9,6 +9,7 @@ import { formatDate, isIsoDate, WARRANTY_MONTH_CHOICES, warrantyEndDate } from "
 import { allowRequest } from "@/app/lib/locker/rateLimit";
 import { saveLockerRecord, type LockerRecord } from "@/app/lib/locker/store";
 import { reportProblem } from "@/app/lib/monitoring/problems";
+import { activePartnerCode } from "@/app/lib/partners/store";
 import { brandedHtml, leadUpdatesAddress, sendMail } from "@/app/lib/warranty/email";
 import { saveInvoiceFile } from "@/app/lib/warranty/store";
 
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
     const reference = `WBL-${randomInt(0, 1_000_000).toString().padStart(6, "0")}`;
     const savedName = await saveInvoiceFile(reference, invoice).catch(() => "");
     const price = Number.isFinite(priceInr) && priceInr > 0 ? Math.round(priceInr) : null;
+    const partnerCode = await activePartnerCode(request).catch(() => "");
     const record: LockerRecord = {
       date: new Date().toISOString(),
       locker_reference: reference,
@@ -73,6 +75,7 @@ export async function POST(request: Request) {
       warranty_months: months,
       warranty_end_date: endDate,
       invoice_file: savedName,
+      ...(partnerCode ? { partner_code: partnerCode } : {}),
     };
     const saved = savedName !== "" && (await saveLockerRecord(record));
     if (!saved) {
@@ -125,6 +128,7 @@ export async function POST(request: Request) {
         source: "website",
         lead_reference: reference,
         payment_link: "",
+        ...(partnerCode ? { partner_code: partnerCode } : {}),
       });
       await sendMail({
         to: leadUpdatesAddress(),
@@ -140,8 +144,9 @@ export async function POST(request: Request) {
           cheapest
             ? `Can still buy an extended warranty: plans from Rs ${cheapest.price_inr}.`
             : `Cannot buy an extended warranty for this device (too old or not in the price list).`,
+          partnerCode ? `Came through partner code: ${partnerCode}` : "",
           `Bill attached: ${savedName}`,
-        ].join("\n"),
+        ].filter(Boolean).join("\n"),
         attachments: [attachment],
       });
       if (email) {

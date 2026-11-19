@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import GoogleCustomerReviewsBadge from "./components/GoogleCustomerReviewsBadge";
+import PartnerTracker from "./components/PartnerTracker";
 
 export const metadata: Metadata = {
   title: {
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <GoogleAnalytics />
+        <PartnerTracker />
         <GoogleCustomerReviewsBadge />
       </body>
     </html>

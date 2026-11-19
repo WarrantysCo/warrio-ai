@@ -14,6 +14,7 @@ import { archiveNewLead } from "@/app/lib/leadArchive";
 import { cleanChatId } from "@/app/lib/chats/store";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
+import { activePartnerCode } from "@/app/lib/partners/store";
 import { createPaymentLink } from "@/app/lib/integrations/razorpay";
 import { reportProblem } from "@/app/lib/monitoring/problems";
 import { warrantyLink } from "@/app/lib/warranty/link";
@@ -162,7 +163,13 @@ export async function POST(request: Request) {
       callbackUrl: warrantyLink(leadReference),
     });
 
-    const leadWithLink = { ...lead, payment_link: paymentUrl ?? "" };
+    // Credit the partner whose link or QR code brought this customer, if any.
+    const partnerCode = await activePartnerCode(request).catch(() => "");
+    const leadWithLink = {
+      ...lead,
+      payment_link: paymentUrl ?? "",
+      ...(partnerCode ? { partner_code: partnerCode } : {}),
+    };
     const [saved, n8n, hubspotResult] = await Promise.all([
       saveLead(leadWithLink),
       sendLeadToN8n(lead),
