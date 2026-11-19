@@ -1,6 +1,7 @@
 import { PARTNER_COMMISSION_PERCENT, PARTNER_REFUND_WINDOW_DAYS } from "@/app/data/partners";
 import { readLeads, type StoredLead } from "@/app/lib/integrations/leadStore";
 import { partnerLink, readPartners, type Partner } from "@/app/lib/partners/store";
+import { readLockerRecords } from "@/app/lib/locker/store";
 import { readWarrantyStatuses, type WarrantyStatus } from "@/app/lib/warranty/store";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +51,17 @@ export default async function PartnersAdminPage({
 }: {
   searchParams: Promise<{ done?: string; error?: string }>;
 }) {
-  const [{ done, error }, partners, leads, statuses] = await Promise.all([
+  const [{ done, error }, partners, leads, statuses, lockerRecords] = await Promise.all([
     searchParams,
     readPartners(),
     readLeads(),
     readWarrantyStatuses(),
+    readLockerRecords(),
   ]);
+  const checks = new Map<string, number>();
+  for (const record of lockerRecords) {
+    if (record.partner_code) checks.set(record.partner_code, (checks.get(record.partner_code) ?? 0) + 1);
+  }
 
   const sales = salesByPartner(leads, statuses);
 
@@ -151,7 +157,8 @@ export default async function PartnersAdminPage({
                   )}
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-5">
+                <div className="rounded-xl bg-slate-50 p-2"><div className="text-lg font-black">{checks.get(partner.code) ?? 0}</div>free bill checks</div>
                 <div className="rounded-xl bg-slate-50 p-2"><div className="text-lg font-black">{stats.orders}</div>orders started</div>
                 <div className="rounded-xl bg-slate-50 p-2"><div className="text-lg font-black">{stats.paid}</div>paid ({rupees(stats.paidValue)})</div>
                 <div className="rounded-xl bg-amber-50 p-2"><div className="text-lg font-black">{rupees(stats.waiting)}</div>waiting for refund window</div>
