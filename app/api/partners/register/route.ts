@@ -58,8 +58,7 @@ export async function POST(request: Request) {
     if (!address) errors.push("Please enter your business address.");
     if (!(PARTNER_VOLUME_CHOICES as readonly string[]).includes(devicesPerMonth)) errors.push("Please choose how many devices you sell in a month.");
     if (gst && !GST_PATTERN.test(gst)) errors.push("Please check your GST number (15 characters).");
-    if (!PAN_PATTERN.test(pan)) errors.push("Please check your PAN (for example ABCDE1234F).");
-    if (!gst && !proof) errors.push("Please give your GST number or upload one registration proof.");
+    if (pan && !PAN_PATTERN.test(pan)) errors.push("Please check your PAN (for example ABCDE1234F).");
     if (proof && proof.size > MAX_INVOICE_UPLOAD_BYTES) errors.push("Please upload a file smaller than 10 MB.");
     else if (proof && !isSupportedInvoiceFile(proof)) errors.push("Please upload the proof as a photo or a PDF.");
     if (value(form, "consent") !== "true") errors.push("Please tick the box to agree to the partner terms.");
@@ -106,7 +105,7 @@ export async function POST(request: Request) {
       `New partner application ${partnerId}`,
       `${businessName} (${businessType}), ${city}`,
       `Contact: ${ownerName}, ${mobile}, ${email}`,
-      `GST: ${gst || "not given"} | PAN: ${pan} | Registration no: ${registrationNo || "none"}`,
+      `GST: ${gst || "not given"} | PAN: ${pan || "not given"} | Registration no: ${registrationNo || "none"}`,
       `Proof file: ${proofFile || "none uploaded"}`,
       `Sells: ${devicesPerMonth}`,
       website ? `Link: ${website}` : "",
