@@ -94,6 +94,12 @@ export default async function WarrantyAdminPage({
                 <div>Serial/IMEI: {details.serial_or_imei}</div>
                 <div>Plan: {lead?.recommended_plan ?? "unknown"}</div>
                 <div>Device purchase date: {details.device_purchase_date}</div>
+                {details.invoice_requested && (
+                  <div className="sm:col-span-2 rounded-lg bg-blue-50 p-2 text-blue-900">
+                    <strong>GST invoice requested.</strong> Bill to: {details.billing_name}, {details.billing_address}, {details.billing_state}
+                    {details.buyer_gstin ? `, GSTIN ${details.buyer_gstin}` : ""}
+                  </div>
+                )}
                 {details.notes_for_team && (
                   <div className="sm:col-span-2 rounded-lg bg-amber-50 p-2 text-amber-800">
                     {details.notes_for_team}

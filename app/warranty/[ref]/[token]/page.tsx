@@ -116,6 +116,11 @@ export default async function WarrantyPage({
             purchaseDate:
               saved?.device_purchase_date ??
               (/^\d{4}-\d{2}-\d{2}$/.test(lead.invoice_date ?? "") ? lead.invoice_date ?? "" : ""),
+            needGstInvoice: saved?.invoice_requested ? "yes" : "",
+            billingName: saved?.billing_name ?? "",
+            billingAddress: saved?.billing_address ?? "",
+            billingState: saved?.billing_state ?? "",
+            buyerGstin: saved?.buyer_gstin ?? "",
           }}
         />
 

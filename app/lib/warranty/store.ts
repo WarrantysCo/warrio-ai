@@ -35,6 +35,12 @@ export type DetailsRecord = {
   // itself, and a couple of photos of the device for our own records.
   warranty_invoice_file?: string;
   condition_photos?: string[];
+  // Only filled when the customer ticked "I need a GST invoice".
+  invoice_requested?: boolean;
+  billing_name?: string;
+  billing_address?: string;
+  billing_state?: string;
+  buyer_gstin?: string;
   notes_for_team: string;
 };
 

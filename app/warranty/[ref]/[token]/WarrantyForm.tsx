@@ -13,6 +13,11 @@ type Details = {
   model: string;
   serialNumber: string;
   purchaseDate: string;
+  needGstInvoice: string;
+  billingName: string;
+  billingAddress: string;
+  billingState: string;
+  buyerGstin: string;
 };
 
 const inputClass =
@@ -178,6 +183,36 @@ export default function WarrantyForm({
           className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-brand-blue"
         />
       </Field>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <label className="flex items-start gap-2 text-sm font-semibold text-slate-800">
+          <input
+            type="checkbox"
+            checked={details.needGstInvoice === "yes"}
+            onChange={(e) => update("needGstInvoice", e.target.checked ? "yes" : "")}
+            className="mt-1"
+          />
+          <span>I need a GST invoice for this plan</span>
+        </label>
+        {details.needGstInvoice === "yes" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="Name on the invoice">
+              <input required value={details.billingName} onChange={(e) => update("billingName", e.target.value)} className={inputClass} />
+            </Field>
+            <Field label="State">
+              <input required placeholder="e.g. Uttar Pradesh" value={details.billingState} onChange={(e) => update("billingState", e.target.value)} className={inputClass} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Billing address" hint="Full address with PIN code.">
+                <textarea required rows={3} value={details.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} className={inputClass} />
+              </Field>
+            </div>
+            <Field label="Your GST number (optional)" hint="Only if you want it printed on the invoice.">
+              <input value={details.buyerGstin} onChange={(e) => update("buyerGstin", e.target.value.toUpperCase())} maxLength={15} className={inputClass} />
+            </Field>
+          </div>
+        )}
+      </div>
 
       <label className="flex items-start gap-2 text-sm text-slate-700">
         <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" />
