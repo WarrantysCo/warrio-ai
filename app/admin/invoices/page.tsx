@@ -1,3 +1,4 @@
+import { readInvoices } from "@/app/lib/invoices/store";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 import { readWarrantyStatuses } from "@/app/lib/warranty/store";
 
@@ -10,9 +11,14 @@ export default async function InvoicesPage({
 }: {
   searchParams: Promise<{ done?: string; error?: string }>;
 }) {
-  const [{ done, error }, leads, statuses] = await Promise.all([searchParams, readLeads(), readWarrantyStatuses()]);
+  const [{ done, error }, leads, statuses, invoices] = await Promise.all([
+    searchParams,
+    readLeads(),
+    readWarrantyStatuses(),
+    readInvoices(),
+  ]);
   const leadByRef = new Map(leads.map((lead) => [lead.lead_reference, lead]));
-  const connected = Boolean(process.env.N8N_INVOICE_CREATE_URL);
+  const connected = Boolean(process.env.INVOICE_API_URL);
 
   const requested = [...statuses.values()]
     .filter((s) => s.payment && s.details?.invoice_requested)
@@ -22,7 +28,7 @@ export default async function InvoicesPage({
     <main className="mx-auto max-w-6xl px-6 py-8 text-slate-900">
       <PageHeader
         title="GST invoices"
-        subtitle="Only customers who ticked 'I need a GST invoice' appear here. Create the invoice in one click. Your signature goes on only after you approve each one."
+        subtitle="Only customers who ticked 'I need a GST invoice' appear here. Create the invoice, check the PDF, then press Approve & send. Your signature goes on only when you press Approve."
       />
       {done && <div className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{done}</div>}
       {error && <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</div>}
@@ -46,6 +52,7 @@ export default async function InvoicesPage({
         {requested.map((status) => {
           const details = status.details!;
           const lead = leadByRef.get(details.lead_reference);
+          const invoice = invoices.get(details.lead_reference);
           return (
             <div key={details.lead_reference} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -64,15 +71,41 @@ export default async function InvoicesPage({
                     {details.email ? ` · ${details.email}` : ""}
                   </div>
                 </div>
-                <form action="/api/admin/invoices/create" method="post">
-                  <input type="hidden" name="leadReference" value={details.lead_reference} />
-                  <button
-                    disabled={!connected}
-                    className="rounded-lg bg-brand-blue px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:bg-slate-300"
-                  >
-                    Create invoice
-                  </button>
-                </form>
+                <div className="flex flex-col items-end gap-2">
+                  {invoice ? (
+                    <>
+                      <span className="text-sm font-bold text-slate-700">{invoice.invoice_no}</span>
+                      <a
+                        href={`/api/admin/invoices/pdf?invoice=${encodeURIComponent(invoice.invoice_no)}`}
+                        className="text-sm font-semibold text-brand-blue underline"
+                      >
+                        View PDF
+                      </a>
+                      {invoice.approved ? (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                          Signed and sent
+                        </span>
+                      ) : (
+                        <form action="/api/admin/invoices/approve" method="post">
+                          <input type="hidden" name="leadReference" value={details.lead_reference} />
+                          <button className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700">
+                            Approve &amp; send
+                          </button>
+                        </form>
+                      )}
+                    </>
+                  ) : (
+                    <form action="/api/admin/invoices/create" method="post">
+                      <input type="hidden" name="leadReference" value={details.lead_reference} />
+                      <button
+                        disabled={!connected}
+                        className="rounded-lg bg-brand-blue px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        Create invoice
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
             </div>
           );

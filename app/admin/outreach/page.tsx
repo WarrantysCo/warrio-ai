@@ -8,7 +8,9 @@ const STATUS_STYLE: Record<string, { label: string; tone: string }> = {
   new: { label: "Not emailed yet", tone: "bg-slate-100 text-slate-700" },
   contacted: { label: "Email sent, no reply", tone: "bg-amber-100 text-amber-800" },
   replied: { label: "Replied", tone: "bg-emerald-100 text-emerald-800" },
-  interested: { label: "Interested", tone: "bg-emerald-100 text-emerald-800" },
+  interested: { label: "Replied (needs answer)", tone: "bg-emerald-100 text-emerald-800" },
+  not_interested: { label: "Asked to stop", tone: "bg-red-100 text-red-800" },
+  first_order: { label: "First order", tone: "bg-emerald-200 text-emerald-900" },
   registered: { label: "Registered", tone: "bg-emerald-200 text-emerald-900" },
   active: { label: "Active partner", tone: "bg-emerald-200 text-emerald-900" },
   stopped: { label: "Asked to stop", tone: "bg-red-100 text-red-800" },
@@ -46,10 +48,10 @@ export default async function OutreachPage() {
 
   const rows = result.rows;
   const emailed = rows.filter((r) => r.status !== "new").length;
-  const replied = rows.filter((r) => ["replied", "interested", "registered", "active"].includes(r.status)).length;
+  const replied = rows.filter((r) => ["replied", "interested", "registered", "active", "first_order"].includes(r.status)).length;
   const phoneOnly = rows.filter((r) => !r.hasEmailContact).length;
-  const stopped = rows.filter((r) => ["stop", "stopped", "bounced"].includes(r.status)).length;
-  const order = ["replied", "interested", "registered", "active", "contacted", "new", "bounced", "stop", "stopped"];
+  const stopped = rows.filter((r) => ["stop", "stopped", "bounced", "not_interested"].includes(r.status)).length;
+  const order = ["first_order", "replied", "interested", "registered", "active", "contacted", "new", "bounced", "stop", "stopped"];
   const sorted = [...rows].sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
 
   return (

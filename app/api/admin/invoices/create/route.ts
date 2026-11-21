@@ -3,14 +3,16 @@ import { NextResponse } from "next/server";
 import { adminAuthRequired, isAdminAllowed } from "@/app/lib/adminAuth";
 import { readLeads } from "@/app/lib/integrations/leadStore";
 import { readWarrantyStatuses } from "@/app/lib/warranty/store";
+import { saveInvoiceEvent } from "@/app/lib/invoices/store";
+import { stateCode } from "@/app/lib/invoices/states";
 import { siteUrl } from "@/app/lib/warranty/link";
 
 export const dynamic = "force-dynamic";
 
 // Amit presses "Create invoice" for a customer who asked for one. The website
 // only passes the customer's billing details to the invoice server (n8n),
-// which numbers the invoice and builds the PDF. It never signs or emails:
-// the signature needs Amit's separate approval, and sending is a later step.
+// which numbers the invoice and builds the unsigned PDF. Signing and emailing
+// happen only in the separate Approve & send step.
 export async function POST(request: Request) {
   if (!isAdminAllowed(request)) return adminAuthRequired();
 
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(back, 303);
   };
 
-  const url = process.env.N8N_INVOICE_CREATE_URL;
+  const url = process.env.INVOICE_API_URL;
   if (!url) return fail("Not connected to the invoice server yet.");
 
   const form = await request.formData();
@@ -33,33 +35,40 @@ export async function POST(request: Request) {
   }
   const lead = (await readLeads()).reverse().find((row) => row.lead_reference === ref);
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.N8N_WEBHOOK_SECRET) headers["X-Warrio-Secret"] = process.env.N8N_WEBHOOK_SECRET;
+  const code = stateCode(details.billing_state ?? "", details.buyer_gstin);
+  if (!code) return fail(`Could not work out the GST state code for "${details.billing_state}". Please check the state.`);
+  if (!lead) return fail("Could not find the order's plan and price.");
 
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "create",
         order_id: ref,
         customer_name: details.billing_name || details.name,
         billing_address: details.billing_address,
         state: details.billing_state,
-        customer_gstin: details.buyer_gstin ?? "",
+        state_code: code,
+        gstin: details.buyer_gstin ?? "",
         phone: details.mobile,
         email: details.email,
         device: `${details.brand} ${details.model}`.trim(),
         device_purchase_date: details.device_purchase_date,
-        plan: lead?.recommended_plan ?? "",
-        plan_price_incl_gst: lead?.plan_price_inr ?? 0,
-        payment_id: status.payment.payment_id,
-        payment_date: status.payment.date,
+        plan: lead.recommended_plan,
+        price_incl_gst: lead.plan_price_inr,
+        payment_mode: "Razorpay",
+        payment_date: status.payment.date.slice(0, 10),
+        razorpay_id: status.payment.payment_id,
+        approved: false,
+        send: false,
       }),
       signal: AbortSignal.timeout(60_000),
     });
-    const text = (await response.text()).slice(0, 200);
-    if (!response.ok || /^NOT MADE/i.test(text)) return fail(text || "The invoice server refused.");
-    back.searchParams.set("done", text || `Invoice created for ${ref}.`);
+    const data = (await response.json().catch(() => ({}))) as { ok?: boolean; invoice?: string; error?: string };
+    if (!response.ok || !data.ok || !data.invoice) return fail(data.error || "The invoice server refused.");
+    await saveInvoiceEvent({ date: new Date().toISOString(), lead_reference: ref, invoice_no: data.invoice, step: "created" });
+    back.searchParams.set("done", `Invoice ${data.invoice} created (not signed or sent yet). Review it, then press Approve & send.`);
     return NextResponse.redirect(back, 303);
   } catch {
     return fail("The invoice server did not answer. Try again in a minute.");
