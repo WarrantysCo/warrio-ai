@@ -1,6 +1,10 @@
 import "server-only";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  GoogleGenerativeAI,
+  GoogleGenerativeAIFetchError,
+  type GenerateContentRequest,
+} from "@google/generative-ai";
 import {
   FileState,
   GoogleAIFileManager,
@@ -14,7 +18,10 @@ const apiKey = process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 const fileManager = apiKey ? new GoogleAIFileManager(apiKey) : null;
 
-const MODEL_NAME = "gemini-3.1-flash-lite";
+// Tried in order. Google often answers 503 "high demand" for a few seconds,
+// so a busy model hands the request to the next one instead of failing.
+const MODEL_NAMES = ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest"];
+const RETRY_STATUSES = new Set([429, 500, 503]);
 const FILE_POLL_INTERVAL_MS = 1_000;
 const FILE_POLL_TIMEOUT_MS = 15_000;
 
@@ -28,8 +35,28 @@ export function getErrorMessage(error: unknown) {
 }
 
 export function createModel(systemInstruction?: string) {
-  if (!genAI) return null;
-  return genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction });
+  const client = genAI;
+  if (!client) return null;
+
+  return {
+    async generateContent(request: GenerateContentRequest) {
+      let lastError: unknown;
+      for (const model of MODEL_NAMES) {
+        try {
+          return await client
+            .getGenerativeModel({ model, systemInstruction })
+            .generateContent(request);
+        } catch (error) {
+          lastError = error;
+          const status =
+            error instanceof GoogleGenerativeAIFetchError ? error.status : undefined;
+          if (status === undefined || !RETRY_STATUSES.has(status)) throw error;
+          console.error(`Gemini ${model} busy (${status}), trying the next model.`);
+        }
+      }
+      throw lastError;
+    },
+  };
 }
 
 async function uploadPdfForAnalysis(invoice: InvoiceUpload) {
