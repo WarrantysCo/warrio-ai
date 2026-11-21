@@ -36,31 +36,46 @@ export default function SiteHeader({
     "shrink-0 rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold shadow-lg shadow-brand-blue/20 transition hover:bg-brand-blue-dark text-white";
 
   return (
-    <header className="border-t-4 border-b border-t-brand-green border-b-slate-200 bg-white/90 backdrop-blur">
+    <header className="border-t-4 border-b border-t-brand-blue border-b-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
         <BrandLogo />
 
-        <nav className="hidden items-center gap-7 lg:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm text-slate-700 hover:text-brand-blue"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="hidden items-center gap-9 lg:flex">
+          <nav className="flex items-center gap-7">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-slate-700 hover:text-brand-blue"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-        {onAskWarrio ? (
-          <button type="button" onClick={onAskWarrio} className={buttonClass}>
-            Ask Warrio
-          </button>
-        ) : (
-          <Link href="/#ask" className={buttonClass}>
-            Ask Warrio
-          </Link>
-        )}
+          {onAskWarrio ? (
+            <button type="button" onClick={onAskWarrio} className={buttonClass}>
+              Ask Warrio
+            </button>
+          ) : (
+            <Link href="/#ask" className={buttonClass}>
+              Ask Warrio
+            </Link>
+          )}
+        </div>
+
+        {/* On phones/tablets the button stays visible; links move to the row below. */}
+        <div className="lg:hidden">
+          {onAskWarrio ? (
+            <button type="button" onClick={onAskWarrio} className={buttonClass}>
+              Ask Warrio
+            </button>
+          ) : (
+            <Link href="/#ask" className={buttonClass}>
+              Ask Warrio
+            </Link>
+          )}
+        </div>
       </div>
 
       <nav className="flex gap-5 overflow-x-auto border-t border-slate-100 px-6 py-3 lg:hidden">

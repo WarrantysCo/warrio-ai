@@ -425,16 +425,16 @@ export default function Home() {
       <SiteHeader onAskWarrio={() => openWarrio()} />
 
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,139,232,0.14),transparent_45%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(120,255,34,0.10),transparent_45%),radial-gradient(circle_at_85%_0%,rgba(30,139,232,0.16),transparent_50%)]" />
 
         <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-12 lg:grid-cols-2 lg:items-center lg:py-16">
           <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-4 py-2 text-sm font-semibold text-brand-green-dark">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-green bg-brand-green/15 px-4 py-2 text-sm font-semibold text-brand-green-dark shadow-sm">
               <span className="h-2 w-2 rounded-full bg-brand-green-dark" />
               AI-powered warranty assistance
             </div>
 
-            <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
+            <h1 className="font-display max-w-3xl text-5xl font-extrabold leading-tight tracking-tight md:text-6xl">
               Protect what you own.
               <span className="block text-brand-blue">
                 Let Warrio handle the rest.
@@ -500,7 +500,7 @@ export default function Home() {
             <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
               Protect your product
             </div>
-            <h2 className="mt-3 text-3xl font-bold md:text-4xl">
+            <h2 className="font-display mt-3 text-3xl font-bold md:text-4xl">
               What do you want to protect?
             </h2>
             <p className="mt-4 text-slate-600">
@@ -509,7 +509,7 @@ export default function Home() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <button
                 key={product.name}
                 onClick={() => {
@@ -522,17 +522,23 @@ export default function Home() {
                   setLeadError("");
                   openWarrio(`I want to protect my ${product.name}`);
                 }}
-                className="group rounded-3xl border border-slate-200 bg-white p-6 text-left transition hover:-translate-y-1 hover:border-blue-500/40 hover:bg-blue-50"
+                className="group rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-brand-blue/40 hover:shadow-md hover:bg-blue-50"
               >
                 <div className="flex items-start justify-between">
-                  <span className="text-4xl">{product.icon}</span>
+                  <span
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${
+                      index % 2 === 0 ? "bg-brand-green/15" : "bg-brand-blue/10"
+                    }`}
+                  >
+                    {product.icon}
+                  </span>
                   <span className="text-sm text-slate-500 transition group-hover:text-brand-blue">
                     →
                   </span>
                 </div>
 
                 <div className="mt-6 text-lg font-bold">{product.name}</div>
-                <div className="mt-2 text-sm text-slate-600">
+                <div className="mt-2 text-sm font-semibold text-brand-blue-dark">
                   {product.price}
                 </div>
               </button>
@@ -547,7 +553,7 @@ export default function Home() {
             <div className="text-sm font-semibold uppercase tracking-wider text-brand-blue">
               Simple
             </div>
-            <h2 className="mt-3 text-3xl font-bold md:text-4xl">
+            <h2 className="font-display mt-3 text-3xl font-bold md:text-4xl">
               Warranty support without the headache
             </h2>
           </div>
@@ -589,7 +595,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-blue-500/20 bg-blue-50 p-8 md:p-12">
           <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
             <div>
-              <h2 className="text-3xl font-bold">Not sure what you need?</h2>
+              <h2 className="font-display text-3xl font-bold">Not sure what you need?</h2>
               <p className="mt-3 max-w-xl text-slate-600">
                 Ask Warrio. It&apos;s built to help you understand your
                 warranty options before you make a decision.
