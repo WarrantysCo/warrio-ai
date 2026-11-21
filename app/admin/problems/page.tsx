@@ -35,7 +35,7 @@ export default async function ProblemsPage({
   ];
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 text-slate-900">
+    <main className="mx-auto max-w-6xl px-6 py-8 text-slate-900">
       <h1 className="text-2xl font-black">Problems &amp; follow-ups</h1>
       <p className="mt-1 text-sm text-slate-600">
         Customers who got stuck, and every error a customer hit on the website.

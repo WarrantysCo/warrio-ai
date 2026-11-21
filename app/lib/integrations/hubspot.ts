@@ -65,10 +65,14 @@ function dealDescription(lead: LeadRow & { payment_link: string; partner_code?: 
 }
 
 // Returns the HubSpot id of the customer's contact, creating or updating it.
-async function saveContact(lead: LeadRow, token: string): Promise<string> {
+async function saveContact(
+  lead: Pick<LeadRow, "name" | "email" | "mobile">,
+  token: string,
+  extra: Record<string, string> = {}
+): Promise<string> {
   const email = lead.email.trim().toLowerCase();
   const phone = `+91${lead.mobile}`;
-  const properties = { ...splitName(lead.name), phone, ...(email ? { email } : {}) };
+  const properties = { ...splitName(lead.name), phone, ...(email ? { email } : {}), ...extra };
 
   if (email) {
     const result = await hubspot("/crm/v3/objects/contacts/batch/upsert", token, {
@@ -87,7 +91,17 @@ async function saveContact(lead: LeadRow, token: string): Promise<string> {
     limit: 1,
   });
   const existing = found?.results?.[0]?.id;
-  if (existing) return existing;
+  if (existing) {
+    if (Object.keys(extra).length > 0) {
+      await fetch(`${API}/crm/v3/objects/contacts/${existing}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ properties: extra }),
+        signal: AbortSignal.timeout(10_000),
+      }).catch(() => {});
+    }
+    return existing;
+  }
 
   const created = await hubspot("/crm/v3/objects/contacts", token, { properties });
   if (!created?.id) throw new Error("contact create returned no id");
@@ -238,5 +252,27 @@ export async function logCertificateEmailToHubSpot(options: {
       mobile: options.mobile,
     });
     return "failed";
+  }
+}
+
+// Records a customer's "you may contact me" tick on their HubSpot contact:
+// which channels, when, and on which page.
+export async function saveConsentToHubSpot(options: {
+  name: string;
+  mobile: string;
+  email: string;
+  source: string;
+  version: string;
+}): Promise<void> {
+  const token = process.env.HUBSPOT_ACCESS_TOKEN;
+  if (!token || !/^[6-9]\d{9}$/.test(options.mobile)) return;
+  try {
+    await saveContact(options, token, {
+      warrio_consent_channels: "email;sms_rcs;whatsapp;phone",
+      warrio_consent_at: String(Date.now()),
+      warrio_consent_source: `${options.source} ${options.version}`,
+    });
+  } catch (error) {
+    console.error("HubSpot consent save failed:", error instanceof Error ? error.message : error);
   }
 }

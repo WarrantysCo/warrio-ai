@@ -69,7 +69,7 @@ export default async function PartnersAdminPage({
   const others = partners.filter((partner) => partner.status !== "pending");
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 text-slate-900">
+    <main className="mx-auto max-w-6xl px-6 py-8 text-slate-900">
       <h1 className="text-2xl font-black">Partners</h1>
       <p className="mt-1 text-sm text-slate-600">
         Businesses that registered on warrantys.co/partners. Check their details, then approve: the partner is emailed

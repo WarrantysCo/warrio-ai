@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTACT_CONSENT_TEXT } from "@/app/data/consent";
 import { useRef, useState, type FormEvent } from "react";
 
 import { salesRules } from "@/app/data/salesRules";
@@ -139,6 +140,7 @@ export default function WarrantyCheck({ categories }: { categories: Category[] }
     body.set("purchaseDate", details.purchaseDate);
     body.set("warrantyMonths", String(months));
     body.set("consent", body.get("consent") === "on" ? "true" : "false");
+    body.set("contactConsent", body.get("contactConsent") === "on" ? "true" : "false");
     const mobile = String(body.get("mobile") ?? "");
     setSaving(true);
     try {
@@ -381,6 +383,10 @@ export default function WarrantyCheck({ categories }: { categories: Category[] }
               </Field>
             </div>
           </div>
+          <label className="mt-4 flex items-start gap-3 text-xs text-slate-600">
+            <input type="checkbox" name="contactConsent" className="mt-1 h-4 w-4" />
+            <span>{CONTACT_CONSENT_TEXT}{" "}<a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-semibold text-brand-blue">Privacy policy</a> (optional)</span>
+          </label>
           <label className="mt-4 flex items-start gap-3 text-sm text-slate-700">
             <input type="checkbox" name="consent" required className="mt-1 h-4 w-4" />
             <span>

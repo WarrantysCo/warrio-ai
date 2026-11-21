@@ -1,3 +1,4 @@
+import { saveContactConsent } from "@/app/lib/consent/store";
 import { NextResponse } from "next/server";
 
 import { isWithinPurchaseWindow } from "@/app/lib/agents/sales/pricing";
@@ -46,6 +47,13 @@ export async function POST(request: Request) {
     serial_or_imei: text(form, "serialNumber", 60),
     device_purchase_date: text(form, "purchaseDate", 10),
   };
+  const wantsGstInvoice = text(form, "needGstInvoice", 5) === "yes";
+  const billing = {
+    billing_name: text(form, "billingName"),
+    billing_address: text(form, "billingAddress", 400),
+    billing_state: text(form, "billingState", 60),
+    buyer_gstin: text(form, "buyerGstin", 15).toUpperCase(),
+  };
   const invoiceEntry = form.get("invoice");
   const invoice = invoiceEntry instanceof File && invoiceEntry.size > 0 ? invoiceEntry : null;
   const previous = (await readWarrantyStatus(leadReference)).details;
@@ -62,6 +70,14 @@ export async function POST(request: Request) {
     errors.push("Please enter the date you bought the device.");
   } else if (new Date(`${details.device_purchase_date}T00:00:00Z`) > new Date()) {
     errors.push("The purchase date cannot be in the future.");
+  }
+  if (wantsGstInvoice) {
+    if (!billing.billing_name) errors.push("Please enter the name for the GST invoice.");
+    if (billing.billing_address.length < 10) errors.push("Please enter the full billing address for the GST invoice.");
+    if (!billing.billing_state) errors.push("Please enter the state for the GST invoice.");
+    if (billing.buyer_gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(billing.buyer_gstin)) {
+      errors.push("Please check the GST number (15 characters), or leave it empty.");
+    }
   }
   if (!invoice && !previous?.invoice_file) {
     errors.push("Please add a photo or PDF of your purchase bill.");
@@ -100,11 +116,14 @@ export async function POST(request: Request) {
     notes.push("Device purchase date is outside the plan window: check eligibility, refund if not eligible.");
   }
 
+  if (wantsGstInvoice) notes.push("Customer asked for a GST invoice: billing details are saved with this order.");
+
   const saved = await saveWarrantyRecord({
     type: "details",
     date: new Date().toISOString(),
     lead_reference: leadReference,
     ...details,
+    ...(wantsGstInvoice ? { invoice_requested: true, ...billing } : {}),
     invoice_file: invoiceFile,
     notes_for_team: notes.join(" "),
   });
@@ -120,6 +139,15 @@ export async function POST(request: Request) {
       { success: false, message: "We could not save your details. Please try again." },
       { status: 500 }
     );
+  }
+  if (text(form, "contactConsent", 5) === "yes") {
+    void saveContactConsent({
+      source: "details-form",
+      reference: leadReference,
+      name: details.name,
+      mobile: details.mobile,
+      email: details.email,
+    });
   }
   return NextResponse.json({ success: true });
 }

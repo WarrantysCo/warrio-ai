@@ -17,7 +17,7 @@ export default async function WarrantyAdminPage({
   const leadByRef = new Map(leads.map((lead) => [lead.lead_reference, lead]));
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 text-slate-900">
+    <main className="mx-auto max-w-6xl px-6 py-8 text-slate-900">
       <h1 className="text-2xl font-black">Warranty certificates</h1>
       <p className="mt-1 text-sm text-slate-600">
         Customers who sent their details, newest first. Check the dates, then
@@ -94,6 +94,12 @@ export default async function WarrantyAdminPage({
                 <div>Serial/IMEI: {details.serial_or_imei}</div>
                 <div>Plan: {lead?.recommended_plan ?? "unknown"}</div>
                 <div>Device purchase date: {details.device_purchase_date}</div>
+                {details.invoice_requested && (
+                  <div className="sm:col-span-2 rounded-lg bg-blue-50 p-2 text-blue-900">
+                    <strong>GST invoice requested.</strong> Bill to: {details.billing_name}, {details.billing_address}, {details.billing_state}
+                    {details.buyer_gstin ? `, GSTIN ${details.buyer_gstin}` : ""}
+                  </div>
+                )}
                 {details.notes_for_team && (
                   <div className="sm:col-span-2 rounded-lg bg-amber-50 p-2 text-amber-800">
                     {details.notes_for_team}

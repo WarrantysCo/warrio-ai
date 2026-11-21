@@ -155,6 +155,13 @@ export const privacyPolicy: Section[] = [
     ],
   },
   {
+    heading: "Messages and your consent",
+    body: [
+      "If you tick the consent box on our forms, you agree that Warrantys.co (Deetya Warranty Private Limited) may contact you by SMS/RCS, WhatsApp, email and phone about your enquiry, your plan, offers and updates. This box is optional and never required to buy a plan. We keep a record of when and where you agreed.",
+      "You can opt out at any time by replying STOP to any message, and we will stop sending you promotional messages. Messages about your order, payment, certificate or a claim may still be sent.",
+    ],
+  },
+  {
     heading: "Data Retention and Security",
     body: [
       "Warrantys.co securely retains customer data for up to 10 years and follows robust encryption practices for data storage and transfer.",
