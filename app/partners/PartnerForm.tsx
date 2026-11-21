@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTACT_CONSENT_TEXT } from "@/app/data/consent";
 import { useState, type FormEvent } from "react";
 
 import { PARTNER_BUSINESS_TYPES, PARTNER_COMMISSION_PERCENT, PARTNER_VOLUME_CHOICES } from "@/app/data/partners";
@@ -131,6 +132,17 @@ export default function PartnerForm() {
           ))}
         </select>
       </Field>
+
+      <label className="flex items-start gap-3 text-xs text-slate-600">
+        <input type="checkbox" name="contactConsent" value="true" className="mt-1 h-5 w-5" />
+        <span>
+          {CONTACT_CONSENT_TEXT}{" "}
+          <a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-semibold text-brand-blue">
+            Privacy policy
+          </a>{" "}
+          (optional)
+        </span>
+      </label>
 
       <label className="flex items-start gap-3 text-sm text-slate-700">
         <input type="checkbox" name="consent" value="true" required className="mt-1 h-5 w-5" />

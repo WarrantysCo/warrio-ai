@@ -1,3 +1,4 @@
+import { saveContactConsent } from "@/app/lib/consent/store";
 import { randomInt } from "node:crypto";
 
 import { NextResponse } from "next/server";
@@ -127,6 +128,10 @@ export async function POST(request: Request) {
       text: customerBody.join("\n\n"),
       html: brandedHtml(customerBody),
     }).catch(() => {});
+
+    if (value(form, "contactConsent") === "true") {
+      void saveContactConsent({ source: "partner-form", name: ownerName, mobile, email });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

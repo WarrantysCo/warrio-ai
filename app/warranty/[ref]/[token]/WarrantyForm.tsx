@@ -193,7 +193,7 @@ export default function WarrantyForm({
           onChange={(e) => update("contactConsent", e.target.checked ? "yes" : "")}
           className="mt-1"
         />
-        <span>{CONTACT_CONSENT_TEXT} (Optional)</span>
+        <span>{CONTACT_CONSENT_TEXT}{" "}<a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-semibold text-brand-blue">Privacy policy</a> (optional)</span>
       </label>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">

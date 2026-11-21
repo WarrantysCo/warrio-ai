@@ -866,7 +866,7 @@ export default function Home() {
                     </label>
                     <label className="flex gap-3 text-xs leading-5 text-slate-600">
                       <input type="checkbox" checked={customerDetails.contactConsent} onChange={(event) => updateCustomerDetail("contactConsent", event.target.checked)} className="mt-1" />
-                      <span>{CONTACT_CONSENT_TEXT} (Optional)</span>
+                      <span>{CONTACT_CONSENT_TEXT}{" "}<a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-semibold text-brand-blue">Privacy policy</a> (optional)</span>
                     </label>
                     {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-800">{leadError}</div>}
                     <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
