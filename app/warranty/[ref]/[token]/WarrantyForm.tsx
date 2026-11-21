@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTACT_CONSENT_TEXT } from "@/app/data/consent";
 import { useState, type FormEvent } from "react";
 
 import { reportFromBrowser } from "@/app/lib/monitoring/reportFromBrowser";
@@ -14,6 +15,7 @@ type Details = {
   serialNumber: string;
   purchaseDate: string;
   needGstInvoice: string;
+  contactConsent: string;
   billingName: string;
   billingAddress: string;
   billingState: string;
@@ -183,6 +185,16 @@ export default function WarrantyForm({
           className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-brand-blue"
         />
       </Field>
+
+      <label className="flex items-start gap-2 text-xs text-slate-600">
+        <input
+          type="checkbox"
+          checked={details.contactConsent === "yes"}
+          onChange={(e) => update("contactConsent", e.target.checked ? "yes" : "")}
+          className="mt-1"
+        />
+        <span>{CONTACT_CONSENT_TEXT} (Optional)</span>
+      </label>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <label className="flex items-start gap-2 text-sm font-semibold text-slate-800">

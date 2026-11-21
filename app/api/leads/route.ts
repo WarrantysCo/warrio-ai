@@ -12,6 +12,7 @@ import type { SalesAnalysis } from "@/app/lib/agents/sales/types";
 import { sendLeadToHubSpotDetailed } from "@/app/lib/integrations/hubspot";
 import { archiveNewLead } from "@/app/lib/leadArchive";
 import { cleanChatId } from "@/app/lib/chats/store";
+import { saveContactConsent } from "@/app/lib/consent/store";
 import { saveLead } from "@/app/lib/integrations/leadStore";
 import { sendLeadToN8n, type LeadRow } from "@/app/lib/integrations/n8n";
 import { activePartnerCode } from "@/app/lib/partners/store";
@@ -176,6 +177,9 @@ export async function POST(request: Request) {
       sendLeadToHubSpotDetailed(leadWithLink),
     ]);
     const hubspot = hubspotResult.delivery;
+    if (getValue(values, "contactConsent") === "true") {
+      void saveContactConsent({ source: "plan-form", reference: leadReference, name: lead.name, mobile: lead.mobile, email: lead.email });
+    }
     // Chat, bill copy, HubSpot note and the email to warrantys.co.amz@gmail.com
     // happen after the customer already has their payment link.
     void archiveNewLead({

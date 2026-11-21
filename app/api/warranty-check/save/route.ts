@@ -1,3 +1,4 @@
+import { saveContactConsent } from "@/app/lib/consent/store";
 import { randomInt } from "node:crypto";
 
 import { NextResponse } from "next/server";
@@ -170,6 +171,10 @@ export async function POST(request: Request) {
         });
       }
     })().catch((error) => console.error("Bill Locker follow-up failed:", error instanceof Error ? error.message : error));
+
+    if (value(form, "contactConsent") === "true") {
+      void saveContactConsent({ source: "bill-locker", reference, name, mobile, email });
+    }
 
     return NextResponse.json({ success: true, reference, warrantyEndDate: endDate });
   } catch (error) {

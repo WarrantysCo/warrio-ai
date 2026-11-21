@@ -1,3 +1,4 @@
+import { saveContactConsent } from "@/app/lib/consent/store";
 import { NextResponse } from "next/server";
 
 import { isWithinPurchaseWindow } from "@/app/lib/agents/sales/pricing";
@@ -138,6 +139,15 @@ export async function POST(request: Request) {
       { success: false, message: "We could not save your details. Please try again." },
       { status: 500 }
     );
+  }
+  if (text(form, "contactConsent", 5) === "yes") {
+    void saveContactConsent({
+      source: "details-form",
+      reference: leadReference,
+      name: details.name,
+      mobile: details.mobile,
+      email: details.email,
+    });
   }
   return NextResponse.json({ success: true });
 }

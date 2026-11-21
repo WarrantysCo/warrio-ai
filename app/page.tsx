@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTACT_CONSENT_TEXT } from "@/app/data/consent";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/app/lib/analytics";
 
@@ -32,6 +33,7 @@ type CustomerDetails = {
   serialNumber: string;
   purchaseDate: string;
   consent: boolean;
+  contactConsent: boolean;
 };
 
 const emptyCustomerDetails: CustomerDetails = {
@@ -43,6 +45,7 @@ const emptyCustomerDetails: CustomerDetails = {
   serialNumber: "",
   purchaseDate: "",
   consent: false,
+  contactConsent: false,
 };
 
 // Product cards shown on the home page; every other category in the price
@@ -226,6 +229,7 @@ export default function Home() {
       formData.append("email", customerDetails.email.trim());
       formData.append("selectedPlanId", selectedPlan.id);
       formData.append("consent", String(customerDetails.consent));
+      formData.append("contactConsent", String(customerDetails.contactConsent));
       formData.append("chatId", getChatId());
 
       if (payLater) {
@@ -859,6 +863,10 @@ export default function Home() {
                     <label className="flex gap-3 text-sm leading-6 text-slate-700">
                       <input type="checkbox" checked={customerDetails.consent} onChange={(event) => updateCustomerDetail("consent", event.target.checked)} className="mt-1" />
                       <span>I want to proceed with this {productName} plan.</span>
+                    </label>
+                    <label className="flex gap-3 text-xs leading-5 text-slate-600">
+                      <input type="checkbox" checked={customerDetails.contactConsent} onChange={(event) => updateCustomerDetail("contactConsent", event.target.checked)} className="mt-1" />
+                      <span>{CONTACT_CONSENT_TEXT} (Optional)</span>
                     </label>
                     {leadError && <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-800">{leadError}</div>}
                     <button type="button" onClick={submitLead} disabled={isSubmittingLead} className="w-full rounded-xl bg-brand-blue py-3 font-semibold text-white transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
