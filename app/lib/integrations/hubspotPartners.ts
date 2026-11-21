@@ -29,6 +29,7 @@ const PROPS = [
   "partner_next_followup",
   "hs_last_logged_outgoing_email_date",
   "notes_last_contacted",
+  "hs_lastmodifieddate",
   "num_associated_contacts",
 ];
 
@@ -60,14 +61,21 @@ export async function readOutreach(): Promise<OutreachResult> {
       };
       for (const item of data.results ?? []) {
         const p = item.properties;
+        const status = (p.warrio_partner_status || p.partner_status || "new").toLowerCase();
         rows.push({
           id: item.id,
           name: (p.name ?? "").replace(/^\[Partner prospect\]\s*/i, "") || "Unnamed",
           phone: p.phone ?? "",
           website: p.domain ?? "",
-          status: (p.warrio_partner_status || p.partner_status || "new").toLowerCase(),
+          status,
           hasEmailContact: Number(p.num_associated_contacts ?? 0) > 0,
-          lastEmailed: p.hs_last_logged_outgoing_email_date || p.notes_last_contacted || null,
+          // The sender logs a note rather than an email, so for shops already
+          // emailed the last change to the company is the best "sent" time.
+          lastEmailed:
+            p.hs_last_logged_outgoing_email_date ||
+            p.notes_last_contacted ||
+            (status !== "new" ? p.hs_lastmodifieddate : null) ||
+            null,
           nextFollowUp: p.warrio_next_follow_up || p.partner_next_followup || null,
         });
       }
