@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Warrio-Key": process.env.INVOICE_API_KEY ?? "" },
       body: JSON.stringify({ action: "approve", invoice_no: invoice.invoice_no, send: true }),
       signal: AbortSignal.timeout(60_000),
     });
