@@ -21,7 +21,7 @@ export default async function ChatsPage() {
   const byRef = new Map(leads.map((lead) => [lead.lead_reference, lead]));
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 text-slate-900">
+    <main className="mx-auto max-w-6xl px-6 py-8 text-slate-900">
       <h1 className="text-2xl font-black">Customer chats with Warrio</h1>
       <p className="mt-1 text-sm text-slate-600">
         Everything customers asked Warrio and what Warrio answered. Chats that ended in an order show the lead number.

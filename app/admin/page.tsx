@@ -43,7 +43,7 @@ function Tile({
     bad: "border-red-300 bg-red-50",
   };
   return (
-    <Link href={href} className={`block rounded-2xl border p-5 shadow-sm hover:shadow ${tones[tone]}`}>
+    <Link href={href} className={`block rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tones[tone]}`}>
       <div className="text-sm font-semibold text-slate-600">{label}</div>
       <div className="mt-1 text-4xl font-black text-slate-900">{value}</div>
       <div className="mt-1 text-xs text-slate-500">{sub}</div>
@@ -79,8 +79,8 @@ export default async function AdminHomePage() {
   const recentOrders = latestLeads.slice(-8).reverse();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 text-slate-900">
-      <h1 className="text-2xl font-black">Good to see you, Amit</h1>
+    <main className="mx-auto max-w-6xl px-6 py-8 text-slate-900">
+      <h1 className="text-3xl font-black tracking-tight">Good to see you, Amit</h1>
       <p className="mt-1 text-sm text-slate-600">
         Today is {new Date(now).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full" })}.
         Tap any box to open it.
