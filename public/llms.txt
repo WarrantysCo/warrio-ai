@@ -1,0 +1,18 @@
+# Warrantys.co
+
+> Extended warranty plans for phones, TVs, laptops and home appliances in India. Upload your purchase bill and get your exact plan price in seconds; pay securely and get a warranty certificate by email.
+
+Key facts:
+- Plans can be bought up to 9 months (270 days) from the purchase invoice date, not tied to when the brand's own 1-year warranty ends.
+- Covers manufacturing defects and electrical/mechanical breakdowns, with cashless repair and genuine parts.
+- Does not cover physical damage, liquid damage, theft, cosmetic damage, consumables (filters/batteries/cables), or AC gas refilling.
+- If a device cannot be repaired, the customer gets a replacement or full refund, no depreciation cut.
+- 7-day free cancellation with full refund.
+- Prices are set by device category and purchase-price band (see /plans for the live price list); do not invent a price not shown there.
+
+Key pages:
+- /plans: live prices by device category and price band
+- /warranty-check: free check of a device's brand-warranty end date, from an uploaded bill
+- /guides: direct-answer guides (is extended warranty worth it, by device type)
+- /faq: frequently asked questions
+- /contact: contact details
