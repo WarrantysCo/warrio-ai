@@ -15,8 +15,15 @@ import type { InvoiceUpload } from "../invoiceFile";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
+// Without this, a stalled Gemini call hangs until the hosting proxy itself
+// times out and returns its own HTML error page, which breaks the customer's
+// JSON parsing instead of showing our friendly "try again" message.
+const MODEL_REQUEST_TIMEOUT_MS = 20_000;
+
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const fileManager = apiKey ? new GoogleAIFileManager(apiKey) : null;
+const fileManager = apiKey
+  ? new GoogleAIFileManager(apiKey, { timeout: MODEL_REQUEST_TIMEOUT_MS })
+  : null;
 
 // Tried in order. Google often answers 503 "high demand" for a few seconds,
 // so a busy model hands the request to the next one instead of failing.
@@ -44,7 +51,10 @@ export function createModel(systemInstruction?: string) {
       for (const model of MODEL_NAMES) {
         try {
           return await client
-            .getGenerativeModel({ model, systemInstruction })
+            .getGenerativeModel(
+              { model, systemInstruction },
+              { timeout: MODEL_REQUEST_TIMEOUT_MS }
+            )
             .generateContent(request);
         } catch (error) {
           lastError = error;
