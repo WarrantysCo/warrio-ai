@@ -3,6 +3,29 @@ import "./globals.css";
 import GoogleAnalytics from "./components/GoogleAnalytics";
 import GoogleCustomerReviewsBadge from "./components/GoogleCustomerReviewsBadge";
 import PartnerTracker from "./components/PartnerTracker";
+import { contact } from "./data/contact";
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: contact.brand,
+  legalName: contact.company,
+  url: "https://warrantys.co",
+  logo: "https://warrantys.co/brand/warrantys-logo.png",
+  description:
+    "Extended warranty plans for TVs, refrigerators, washing machines, laptops and other home devices in India. Upload your bill, see your plan price, and get a warranty certificate by email.",
+  email: contact.email,
+  telephone: "+91 88751 92691",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Nayabans, Gautam Buddha Nagar",
+    addressLocality: "Noida",
+    addressRegion: "Uttar Pradesh",
+    postalCode: "201301",
+    addressCountry: "IN",
+  },
+  areaServed: "IN",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -25,6 +48,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-full flex flex-col">
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         {children}
         <GoogleAnalytics />
         <PartnerTracker />
