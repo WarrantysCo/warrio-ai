@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   // variants. Send all of them to the real page instead of a 404.
   async redirects() {
     return [
+      "/amazon-",
       "/amazon- claim",
       "/amazon-%20claim",
       "/amazon -claim",

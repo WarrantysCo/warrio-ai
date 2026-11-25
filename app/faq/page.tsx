@@ -3,6 +3,18 @@ import Link from "next/link";
 
 import PageShell from "@/app/components/PageShell";
 import FaqList from "@/app/components/FaqList";
+import { faqText } from "@/app/data/policies";
+import { parseFaq } from "@/app/lib/policyText";
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: parseFaq(faqText).map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: { "@type": "Answer", text: item.answer.join(" ") },
+  })),
+};
 
 export const metadata: Metadata = {
   title: "FAQ",
@@ -29,6 +41,11 @@ export default function FaqPage() {
         </>
       }
     >
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <FaqList />
     </PageShell>
   );
