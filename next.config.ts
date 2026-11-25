@@ -6,6 +6,19 @@ const nextConfig: NextConfig = {
   // variants. Send all of them to the real page instead of a 404.
   async redirects() {
     return [
+      // Old website: product pages Google still has indexed (733 of them)
+      // now go to the live price list instead of a 404.
+      { source: "/product/:path*", destination: "/plans", permanent: true },
+      { source: "/products/:path*", destination: "/plans", permanent: true },
+      { source: "/products", destination: "/plans", permanent: true },
+      // One address for the site: www goes to the main domain.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.warrantys.co" }],
+        destination: "https://warrantys.co/:path*",
+        permanent: true,
+      },
+      ...[
       "/amazon-",
       "/amazon- claim",
       "/amazon-%20claim",
@@ -18,11 +31,12 @@ const nextConfig: NextConfig = {
       "/amazon-claims",
       "/amazon",
       "/claim",
-    ].map((source) => ({
-      source,
-      destination: "/amazon-claim",
-      permanent: false,
-    }));
+      ].map((source) => ({
+        source,
+        destination: "/amazon-claim",
+        permanent: false,
+      })),
+    ];
   },
 
   // Next statically pre-renders most of our pages and sends them with a
