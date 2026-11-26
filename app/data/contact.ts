@@ -16,7 +16,7 @@ export const contact = {
   // Official brand profiles. Used in the footer and in the Organization
   // JSON-LD "sameAs" so search engines and AI tools link them to this site.
   socials: [
-    { label: "Facebook", href: "https://www.facebook.com/449384894916352" },
+    { label: "Facebook", href: "https://www.facebook.com/Warrantys.co" },
     { label: "Instagram", href: "https://www.instagram.com/warrantys.co_112151/" },
     { label: "YouTube", href: "https://www.youtube.com/@Warrantysco" },
     { label: "Quora", href: "https://www.quora.com/profile/Amit-Verma-7060" },
