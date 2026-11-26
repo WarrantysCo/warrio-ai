@@ -51,6 +51,20 @@ export default async function GuidePage({
     })),
   };
 
+  // VideoObject structured data for the matching YouTube Short, so search
+  // and AI crawlers can index the video alongside the page's text.
+  const video = guide.video;
+  const videoJsonLd = video && {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: video.title,
+    description: video.description,
+    thumbnailUrl: `https://i.ytimg.com/vi/${video.youtubeId}/hqdefault.jpg`,
+    uploadDate: video.uploadDate,
+    contentUrl: `https://www.youtube.com/shorts/${video.youtubeId}`,
+    embedUrl: `https://www.youtube.com/embed/${video.youtubeId}`,
+  };
+
   return (
     <PageShell eyebrow="Guide" title={guide.title} intro={guide.intro}>
       <script
@@ -58,6 +72,30 @@ export default async function GuidePage({
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {videoJsonLd && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
+        />
+      )}
+
+      {video && (
+        <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="aspect-[9/16] max-w-xs">
+            <iframe
+              src={`https://www.youtube.com/embed/${video.youtubeId}`}
+              title={video.title}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+          <p className="px-5 py-4 text-sm leading-6 text-slate-700">
+            {video.transcript}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3">
         {guide.faqs.map((faq, index) => (
