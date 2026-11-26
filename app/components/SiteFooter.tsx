@@ -53,6 +53,19 @@ export default function SiteFooter() {
               Call / WhatsApp: {contact.phone}
             </a>
           </div>
+          <div className="mt-4 flex flex-wrap gap-2" aria-label="Follow Warrantys.co">
+            {contact.socials.map((s) => (
+              <a
+                key={s.href}
+                href={s.href}
+                target="_blank"
+                rel="me noopener noreferrer"
+                className="rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:border-brand-blue hover:text-brand-blue"
+              >
+                {s.label}
+              </a>
+            ))}
+          </div>
         </div>
 
         {columns.map((column) => (
