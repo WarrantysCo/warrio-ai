@@ -25,6 +25,7 @@ const organizationJsonLd = {
     addressCountry: "IN",
   },
   areaServed: "IN",
+  sameAs: contact.socials.map((s) => s.href),
 };
 
 export const metadata: Metadata = {

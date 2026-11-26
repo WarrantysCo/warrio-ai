@@ -13,4 +13,13 @@ export const contact = {
   phone: "8875192691",
   phoneHref: "tel:+918875192691",
   whatsappHref: "https://wa.me/918875192691",
+  // Official brand profiles. Used in the footer and in the Organization
+  // JSON-LD "sameAs" so search engines and AI tools link them to this site.
+  socials: [
+    { label: "Facebook", href: "https://www.facebook.com/449384894916352" },
+    { label: "Instagram", href: "https://www.instagram.com/warrantys.co_112151/" },
+    { label: "YouTube", href: "https://www.youtube.com/@Warrantysco" },
+    { label: "Quora", href: "https://www.quora.com/profile/Amit-Verma-7060" },
+    { label: "Reddit", href: "https://www.reddit.com/user/WarrantysCo/" },
+  ],
 };
