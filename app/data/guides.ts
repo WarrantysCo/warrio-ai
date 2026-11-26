@@ -5,6 +5,14 @@
 // comes from priceList.ts via /plans or /warranty-check. No competitor or
 // other-provider names here, ever.
 
+export type GuideVideo = {
+  youtubeId: string;
+  title: string;
+  description: string;
+  uploadDate: string; // ISO date, when the Short was published
+  transcript: string; // short factual summary of what the Short says
+};
+
 export type Guide = {
   slug: string;
   title: string;
@@ -12,6 +20,7 @@ export type Guide = {
   categoryId: string;
   intro: string;
   faqs: { question: string; answer: string }[];
+  video?: GuideVideo;
 };
 
 export const guides: Guide[] = [
@@ -23,6 +32,15 @@ export const guides: Guide[] = [
     categoryId: "tv",
     intro:
       "Most TVs sold in India come with a 1-year manufacturer warranty. An extended warranty picks up after that, covering electrical and mechanical breakdowns and manufacturing defects for 1 to 3 more years, with cashless repairs and genuine parts.",
+    video: {
+      youtubeId: "n3H0UmRAqM4",
+      title: "Big TV broken? Repair bill can be ₹0 with Warrantys.co",
+      description:
+        "A short explainer on what happens when a large TV suddenly stops working after the brand warranty ends, and how a Warrantys.co extended warranty plan covers the repair instead of an out-of-pocket bill.",
+      uploadDate: "2026-11-18",
+      transcript:
+        "Shows a TV suddenly breaking down after the brand warranty period. Explains that without extended warranty, the full repair cost falls on the owner, but with a Warrantys.co plan the repair is cashless with genuine parts.",
+    },
     faqs: [
       {
         question: "Is extended warranty worth it for a TV?",
@@ -59,6 +77,15 @@ export const guides: Guide[] = [
     categoryId: "refrigerator",
     intro:
       "A refrigerator runs every day of the year, so a compressor or cooling-system fault after the brand warranty ends is one of the more expensive home-appliance repairs. Extended warranty covers this for 1 to 3 years after the standard 1-year brand cover.",
+    video: {
+      youtubeId: "3UqPIZ9i-HM",
+      title: "Fridge breakdown? Skip the tension with extended warranty",
+      description:
+        "A short explainer on refrigerator breakdowns after the brand warranty ends, and how a Warrantys.co extended warranty plan saves the repair cost.",
+      uploadDate: "2026-11-17",
+      transcript:
+        "Shows a refrigerator (or similar electronic appliance) breaking down at home. Explains that extended warranty takes the tension out of a breakdown by covering the repair cost once the brand warranty has run out.",
+    },
     faqs: [
       {
         question: "Is extended warranty worth it for a refrigerator?",
@@ -90,6 +117,15 @@ export const guides: Guide[] = [
     categoryId: "ac",
     intro:
       "Air conditioner repairs (compressor, PCB, gas-related faults) can be costly once the brand warranty ends. Extended warranty covers breakdowns for 1 to 3 years after that, regardless of season — the purchase window is what matters, not the time of year you buy.",
+    video: {
+      youtubeId: "J4foTVNrOmo",
+      title: "₹8,000 AC repair cost? Protect your AC today",
+      description:
+        "A short explainer on how an unexpected AC repair bill (compressor or gas issue) can disturb a monthly budget, and how a Warrantys.co extended warranty plan covers it.",
+      uploadDate: "2026-04-12",
+      transcript:
+        "Explains that an unexpected AC repair bill — for example a compressor or gas-related issue — can disturb a household's monthly budget, and that a Warrantys.co extended warranty plan protects against that cost.",
+    },
     faqs: [
       {
         question: "Is extended warranty worth it for an AC?",
@@ -121,6 +157,15 @@ export const guides: Guide[] = [
     categoryId: "washing-machine",
     intro:
       "Washing machine motor and drum faults after the 1-year brand warranty are common repair costs. Extended warranty covers these for 1 to 3 additional years.",
+    video: {
+      youtubeId: "0Ni-1-7SWdA",
+      title: "Bought a new washing machine? Don't worry about repairs",
+      description:
+        "A short explainer on why a new washing machine owner doesn't need to worry about future repair costs when covered by a Warrantys.co extended warranty plan.",
+      uploadDate: "2026-11-16",
+      transcript:
+        "Addresses someone who has just bought a new washing machine and tells them not to worry about the repair tension later, since an extended warranty plan covers it.",
+    },
     faqs: [
       {
         question: "Is extended warranty worth it for a washing machine?",
@@ -178,6 +223,15 @@ export const guides: Guide[] = [
     categoryId: "laptop",
     intro:
       "Laptop motherboard, display, and keyboard repairs after the 1-year brand warranty ends can run into thousands of rupees, especially on premium models. Extended warranty covers these breakdowns for 1 to 3 additional years, with software-issue cover included.",
+    video: {
+      youtubeId: "TPcDUMZkxBw",
+      title: "₹18,000 repair bill? Protect your device with Warrantys.co",
+      description:
+        "A short explainer on how a single repair bill can spoil a month's budget, and how a Warrantys.co extended warranty plan protects a laptop (or other device) against that cost.",
+      uploadDate: "2026-11-12",
+      transcript:
+        "Shows a laptop owner facing a large, unexpected repair bill after the brand warranty has ended. Explains that one repair bill can spoil a whole month's budget, and that a Warrantys.co extended warranty plan protects the device against that cost.",
+    },
     faqs: [
       {
         question: "Is extended warranty worth it for a laptop?",
