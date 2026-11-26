@@ -34,6 +34,10 @@ export const metadata: Metadata = {
   },
   description:
     "Extended warranty plans for phones, TVs, laptops and home appliances. Upload your bill and Warrio, our AI assistant, finds your plan in seconds.",
+  // Bing Webmaster Tools ownership check (public value, not a secret).
+  verification: {
+    other: { "msvalidate.01": "758D3B8DE7A12C6EB4E4FC6C8F8C6BBF" },
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
