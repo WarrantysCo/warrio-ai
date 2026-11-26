@@ -6,6 +6,18 @@ const nextConfig: NextConfig = {
   // variants. Send all of them to the real page instead of a 404.
   async redirects() {
     return [
+      // Short link for asking customers for a Google review (Business Profile
+      // "Ask for reviews" link, given by Amit 2026-11-26).
+      {
+        source: "/review",
+        destination: "https://g.page/r/CUbfzZb5wzbaEBM/review",
+        permanent: false,
+      },
+      {
+        source: "/reviews",
+        destination: "https://g.page/r/CUbfzZb5wzbaEBM/review",
+        permanent: false,
+      },
       // Old website: product pages Google still has indexed (733 of them)
       // now go to the live price list instead of a 404.
       { source: "/product/:path*", destination: "/plans", permanent: true },
