@@ -27,6 +27,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: privatePaths,
       })),
     ],
-    sitemap: `${SITE}/sitemap.xml`,
+    sitemap: [`${SITE}/sitemap.xml`, `${SITE}/video-sitemap.xml`],
   };
 }
